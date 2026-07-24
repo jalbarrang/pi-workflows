@@ -1,0 +1,7 @@
+export const DEFAULT_MAX_BYTES = 1024 * 1024;
+export const DEFAULT_MAX_DEPTH = 16;
+export const DEFAULT_MAX_NODES = 20_000;
+export const DEFAULT_MAX_STRING_BYTES = 64 * 1024;
+export const TRANSCRIPT_MAX_BYTES = 32 * 1024;
+export const TRANSCRIPT_ENTRY_MAX_BYTES = 8 * 1024;
+export const CHECKPOINT_INTERVAL_MS = 500;

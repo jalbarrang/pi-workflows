@@ -1,0 +1,38 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      # pi resolves bash on Windows (Git Bash, MSYS2, Cygwin, or WSL) and throws
+      # without it, so a missing shell must fail loudly here rather than surface
+      # as a confusing child-session error later.
+      - name: Verify a bash shell is available
+        run: bash --version
+        shell: bash
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm format:check
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm line-count
+      - run: pnpm test
+      - run: npm pack --dry-run

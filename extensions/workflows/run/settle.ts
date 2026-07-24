@@ -1,0 +1,56 @@
+import type { ArtifactStore } from "../artifacts/index.ts";
+import type { SandboxRunner } from "../sandbox/index.ts";
+import type { Layer } from "effect";
+import type { RunRuntime } from "./runtime.ts";
+import type { PreparedWorkflowScript } from "../scripting/index.ts";
+import { runWorkflowScript } from "./script.ts";
+
+const errorText = (error: unknown) =>
+  (error instanceof Error ? error.message : String(error)).slice(0, 16 * 1024);
+export async function settleRun(
+  runtime: RunRuntime,
+  prepared: PreparedWorkflowScript,
+  args: unknown,
+  layer: Layer.Layer<ArtifactStore | SandboxRunner>,
+) {
+  let status: "completed" | "failed" | "aborted" = "completed";
+  try {
+    const result = await runWorkflowScript(runtime, prepared, args, layer);
+    runtime.state.update((details) => {
+      details.result = result;
+    });
+  } catch (error) {
+    runtime.state.update((details) => {
+      details.error = errorText(error);
+    });
+    status = runtime.controller.signal.aborted ? "aborted" : "failed";
+    runtime.controller.abort("Workflow script failed");
+  }
+  const settled = await runtime.controller.settle({ abort: status !== "completed" });
+  runtime.state.update((details) => {
+    if (!settled) {
+      status = "failed";
+      details.error = details.error
+        ? `${details.error}; agent shutdown deadline exceeded`
+        : "Agent shutdown deadline exceeded";
+    }
+    for (const record of details.agents) {
+      if (record.state !== "running") continue;
+      record.state = "error";
+      record.error ??= "Agent did not settle before run cleanup";
+      record.finishedAt = Date.now();
+    }
+    details.status = status;
+    details.finishedAt = Date.now();
+  });
+  try {
+    runtime.persistence.flush();
+  } catch (error) {
+    const message = `Artifact persistence failed: ${errorText(error)}`;
+    runtime.state.update((details) => {
+      details.status = "failed";
+      details.error = message;
+    });
+    throw new Error(message);
+  }
+}

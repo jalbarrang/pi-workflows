@@ -1,0 +1,51 @@
+# Architecture
+
+## Shape of the system
+
+One pi tool (`workflow`) and one command (`/workflows`). The tool accepts a JavaScript orchestration script written by the model, runs it inside a permission-restricted Node child, and services the callbacks that child makes. Each `agent()` callback becomes an isolated in-process pi session with its own resources and tool policy. Nothing about the script is trusted: it is parsed statically, stripped of its metadata declaration, and executed only inside the child.
+
+## Bounded contexts
+
+Each directory under `extensions/workflows/` is a context with a small public surface, re-exported from its own `index.ts` where one exists.
+
+| Context         | Responsibility                                                                                                                          | Depends on                            |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
+| `scripting/`    | Parse the script, extract metadata from static literals only, collect statically declared model references. Pure — no IO, no processes. | acorn                                 |
+| `sandbox/`      | Spawn and supervise the child, enforce the IPC protocol and its bounds, own the DSL option-key registry, host the `.cjs` worker.        | `artifacts/` for serialization        |
+| `agent/`        | Create child sessions, apply tool policy, inject structured output, arm the watchdog, guard tool calls, project transcripts and usage.  | `policy/`, `artifacts/`, `run/` types |
+| `run/`          | The run aggregate and its lifecycle: option resolution, scheduling, budget, abort, settle, progress emission.                           | all of the above                      |
+| `artifacts/`    | Bounded serialization, atomic writes, throttled checkpoints.                                                                            | none                                  |
+| `policy/`       | Decide whether a governed agent may run a command.                                                                                      | `@dreki-gg/pi-command-sandbox`        |
+| `presentation/` | Model-facing prompt text, tool renderers, the `/workflows` dashboard, the footer indicator.                                             | `run/` types                          |
+
+`extensions/workflows/index.ts` is the composition root and stays thin: it registers the tool and command, builds the service layer, and wires hooks. Business logic does not live there.
+
+## Service seams
+
+Three infrastructure seams are Effect services, each a `Context.Service` with a `static layer`:
+
+- `SandboxRunner` (`sandbox/service.ts`) — running a script in the child.
+- `ArtifactStore` (`artifacts/service.ts`) — persisting a run.
+- `CommandPolicy` (`policy/service.ts`) — ruling on a command.
+
+`run/services.ts` merges them into `WorkflowServicesLayer`. The layer is resolved at a boundary — `run/prepare.ts` for the store and policy, `run/script.ts` for the sandbox — and the resulting functions are passed inward as plain values on `RunRuntime`. Domain modules never import a layer, which is what keeps them testable: a test supplies `Layer.succeed(...)` and needs no session, no child process, and no model.
+
+## Run lifecycle
+
+1. **Tool call** — `run/execute.ts` receives the input and parses the script through `scripting/`. A parse failure throws before anything is created.
+2. **Preflight** — `run/prepare.ts` validates every statically declared model against the registry. An unknown model rejects the call before a run directory, an artifact, or an agent exists.
+3. **Setup** — run id, run directory, `script.js` and optional `args.json` written, an initial persist through `ArtifactStore`, then `WorkflowState`, the checkpoint scheduler, a `RunController`, and the progress emitter.
+4. **Execution** — `run/settle.ts` calls `run/script.ts`, which asks `SandboxRunner` to spawn the child. The child executes the script and calls back over IPC.
+5. **Agent callbacks** — `sandbox/agent-message.ts` validates each request against the protocol bounds and hands it to `run/agent-call.ts`, which creates the agent record, validates options, then schedules through `RunController`.
+6. **Agent run** — `agent/runner.ts` creates the child session, arms the first-response watchdog, guards every tool call with a timeout, and projects usage and a bounded transcript as it goes.
+7. **Settle** — the controller seals, waits a bounded time for in-flight agents, marks any orphan as errored, sets the terminal status, and flushes artifacts synchronously.
+
+Blocking runs emit throttled progress into the tool block. Background runs return a launch message immediately and deliver the settled result as a follow-up message.
+
+## Concurrency and cancellation
+
+`run/controller.ts` owns fanout. An Effect `Semaphore` caps concurrent agents, a `Ref` reserves call budget synchronously so a burst cannot exceed it, and each scheduled task gets an `AbortController` derived from both the run signal and the caller's invocation signal. Cancelling one invocation must not abort the run; aborting the run must stop everything. Settle is bounded so a stuck agent cannot hang teardown.
+
+## Adding a feature
+
+A new DSL option touches four places in order: the key registry in `sandbox/option-keys.ts`, a resolver reached from `run/agent-options.ts`, whatever consumes the resolved value, and the option table in the root `README.md`. Adding a key without a resolver means it is accepted and ignored, which the unknown-key rejection exists to prevent — so add both in the same change.

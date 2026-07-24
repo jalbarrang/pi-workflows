@@ -1,0 +1,48 @@
+# Isolation model
+
+Read this before changing anything under `sandbox/`, `policy/`, or `agent/`. Every mechanism here exists because removing it opens a concrete hole, and several were added after a test proved the hole was reachable.
+
+## Layer 1 — the script never runs in the host
+
+Orchestration source executes in a separate Node process spawned with `--permission`, filesystem read granted only to the worker directory, and a small heap and stack. Standard IO is discarded; the only channel is an IPC pipe. If the runtime cannot enforce `--permission`, the runner **refuses to start** rather than falling back to in-process execution. Do not add a fallback.
+
+The environment handed to the child is the minimum needed to start: the path variable and `NODE_NO_WARNINGS`, plus `SystemRoot`/`TEMP` on Windows only. That tightness is a security property — forwarding the parent environment would hand a script every token in it. `sandbox/child-env.ts` owns it.
+
+## Layer 2 — the child restricts itself further
+
+Before any script runs, the worker deletes process capabilities that could escape or signal (`getBuiltinModule`, `binding`, `dlopen`, `kill`, `send`, and friends). The script is then compiled into a `vm` context with code generation disabled, so `eval` and `new Function` cannot be used to smuggle in new source. The only bindings exposed are the four DSL primitives, frozen.
+
+Two accounting rules catch a class of model authoring bug: a run that finishes with unawaited `agent()` calls, or with calls still in flight, fails loudly instead of silently discarding work.
+
+## Layer 3 — the IPC protocol is authenticated and bounded
+
+Every message carries a per-run random token; a message without it kills the run. Source, arguments, results, and individual agent messages each have byte caps, prompts have a character cap, and the number of agent requests is capped. Duplicate request ids are rejected. A violation is terminal, never a warning — a script that can retry past a bound has no bound.
+
+## Layer 4 — child agents are constrained
+
+Child sessions get normal built-ins and trust-appropriate project resources, but recursive orchestration and user-prompting tools are denied so a workflow cannot spawn workflows or block waiting for a human. Every tool call is wrapped with an independent timeout, including tools registered later by extensions. A timeout becomes an error tool result, leaving the agent free to recover.
+
+## Layer 5 — governed agents
+
+An agent is _governed_ when it is `read-only` or has a `writeScope`. For governed agents:
+
+**Commands** go through `policy/`. The command string is parsed into segments, and every segment must independently avoid the destructive list and match the safe list. Redirects and command substitution are refused. `allowCommands` widens the safe list only.
+
+**`policy/deny.ts` cannot be widened.** This is the important part. `allowCommands` feeds the _safe_ list, so a plausible pattern such as `node *` would otherwise also permit `node -e '<anything>'`, and `sh *` would hand over an entire shell. The deny list is passed as destructive patterns, which are evaluated first, and it covers shell re-entry, PowerShell, wrappers that execute a different binary than the one matched (`env`, `xargs`, `timeout`, …), eval builtins, interpreter eval flags, and fetch-and-run launchers. Both of those escapes were live and were caught by the escape suite.
+
+**Writes** go through `agent/write-scope.ts`. A path is canonicalized by resolving the closest existing ancestor with the native realpath and re-appending the remainder. That single mechanism defeats two bypasses: a symlink inside the scope pointing out of it, and a case-only variant such as `Client/x` for a real `client/` on a case-insensitive filesystem. Anything resolving outside the working directory is refused before glob matching happens.
+
+Note that Node's permission model deliberately follows symlinks out of granted paths, so it cannot be used for scoping. That is why canonicalization is done in our code.
+
+## What is not guaranteed
+
+State these plainly; do not let documentation imply more.
+
+- **`allowCommands` inherits everything those commands can do.** Allowing `npm run *` allows every script in the repository's `package.json`.
+- **An ungoverned agent is unrestricted.** A workflow with no `tools` and no `writeScope` gets the full built-in tool set, exactly as before this feature existed.
+- **The permission model is a seat belt, not a sandbox for hostile code.** Node's own documentation says so. Our layering raises the cost of an escape; it does not make the host safe against a determined attacker who can choose the script.
+- **The command parser is POSIX.** It is correct on every platform pi supports, because pi requires a bash shell on Windows too — but PowerShell syntax would not be parsed correctly, which is exactly why invoking PowerShell is denied outright rather than inspected.
+
+## Changing any of this
+
+If a test that attempts an escape starts passing where it used to be denied, that is a regression, not an improvement to the test. If a legitimate workflow is blocked, widen the safe list or the scope — never the deny list, and never a byte bound.

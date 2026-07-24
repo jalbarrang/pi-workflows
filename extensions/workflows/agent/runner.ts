@@ -1,0 +1,92 @@
+import { truncateUtf8 } from "../artifacts/index.ts";
+import { emptyUsage } from "../run/usage.ts";
+import { createWorkflowSession } from "./create-session.ts";
+import { observeSession } from "./observe.ts";
+import { shutdownChildSession } from "./shutdown.ts";
+import { transcriptFromMessages } from "./transcript.ts";
+import type { AgentOutcome, RunAgentOptions } from "./types.ts";
+import { finalOutput } from "./usage.ts";
+import { createFirstResponseWatchdog } from "./watchdog.ts";
+
+const OUTPUT_MAX_BYTES = 64 * 1024;
+const errorText = (cause: unknown) =>
+  (cause instanceof Error ? cause.message : String(cause)).slice(0, 16 * 1024);
+export async function runAgent(options: RunAgentOptions): Promise<AgentOutcome> {
+  let created;
+  try {
+    created = await createWorkflowSession(options);
+  } catch (cause) {
+    return {
+      ok: false,
+      output: "",
+      error: `Failed to create agent session: ${errorText(cause)}`,
+      aborted: false,
+      usage: emptyUsage(),
+      model: options.model?.id,
+      contextWindow: options.model?.contextWindow,
+      transcript: [],
+    };
+  }
+  const { session, structured, stopGuard } = created;
+  const observer = observeSession(session, options);
+  let aborted = false;
+  let abortPromise: Promise<void> | undefined;
+  const onAbort = () => {
+    aborted = true;
+    abortPromise ??= session.abort().catch(() => {});
+  };
+  if (options.signal?.aborted) onAbort();
+  else options.signal?.addEventListener("abort", onAbort, { once: true });
+  let caught: string | undefined;
+  try {
+    if (!aborted) {
+      const watchdog = createFirstResponseWatchdog(() => session.abort(), {
+        timeoutMs: options.firstResponseTimeoutMs,
+        model: session.model?.id ?? options.model?.id,
+      });
+      observer.setMarkResponse(watchdog.markResponse);
+      await watchdog.waitFor(session.prompt(options.prompt));
+    }
+  } catch (cause) {
+    caught = errorText(cause);
+  } finally {
+    options.signal?.removeEventListener("abort", onAbort);
+    if (abortPromise) await abortPromise;
+    observer.unsubscribe();
+    stopGuard();
+  }
+  const projection = observer.projection();
+  const output = truncateUtf8(finalOutput(session.messages), OUTPUT_MAX_BYTES);
+  const transcript = transcriptFromMessages(session.messages, observer.timings);
+  await shutdownChildSession(session);
+  const base = {
+    output,
+    usage: projection.usage,
+    model: projection.model,
+    contextWindow: projection.contextWindow,
+    transcript,
+  };
+  if (aborted || projection.stopReason === "aborted") {
+    return {
+      ...base,
+      ok: false,
+      structured: structured(),
+      error: "Agent was aborted",
+      aborted: true,
+    };
+  }
+  const failure =
+    caught ?? projection.error ?? (projection.stopReason === "error" ? "Agent failed" : undefined);
+  if (failure)
+    return { ...base, ok: false, structured: structured(), error: failure, aborted: false };
+  if (options.schema !== undefined && structured() === undefined) {
+    return {
+      ...base,
+      ok: false,
+      error:
+        "Agent finished without calling structured_output; no matching structured result was produced.",
+      aborted: false,
+    };
+  }
+  return { ...base, ok: true, structured: structured(), aborted: false };
+}
