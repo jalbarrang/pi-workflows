@@ -3,6 +3,8 @@ import type { SandboxRunner } from "../sandbox/index.ts";
 import type { Layer } from "effect";
 import type { RunRuntime } from "./runtime.ts";
 import type { PreparedWorkflowScript } from "../scripting/index.ts";
+import { incompletePhases } from "./incomplete.ts";
+import { gateStatus } from "./required-resolution.ts";
 import { runWorkflowScript } from "./script.ts";
 
 const errorText = (error: unknown) =>
@@ -26,6 +28,15 @@ export async function settleRun(
     status = runtime.controller.signal.aborted ? "aborted" : "failed";
     runtime.controller.abort("Workflow script failed");
   }
+  // A failed gate is the run's real cause of death. It must outrank both the
+  // generic abort message and a script that raced to a return before the kill.
+  const gate = runtime.state.snapshot().requiredFailure;
+  status = gateStatus(status, gate);
+  if (gate) {
+    runtime.state.update((details) => {
+      details.error = gate;
+    });
+  }
   const settled = await runtime.controller.settle({ abort: status !== "completed" });
   runtime.state.update((details) => {
     if (!settled) {
@@ -40,6 +51,8 @@ export async function settleRun(
       record.error ??= "Agent did not settle before run cleanup";
       record.finishedAt = Date.now();
     }
+    const incomplete = incompletePhases(details);
+    if (incomplete.length > 0) details.incompletePhases = incomplete;
     details.status = status;
     details.finishedAt = Date.now();
   });

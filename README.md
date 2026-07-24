@@ -32,8 +32,9 @@ const review = await agent(`Review ${args.target}. Do not edit.`, {
   schema: FINDINGS,
   tools: "read-only",
   allowCommands: ["npm run *"],
+  required: true,
 });
-if (!review.ok) return { failed: review.error };
+if (!review.ok) return { status: "unreviewed", failed: review.error };
 const blocking = review.structured.blocking;
 if (blocking.length > 0) {
   phase("Fixup");
@@ -45,6 +46,8 @@ if (blocking.length > 0) {
 }
 return { blocking, fixed: blocking.length > 0 };
 ```
+
+`(review.structured && review.structured.blocking) || []` collapses "found nothing" and "no reviewer" into one empty value, so a gate that died reports `blockingCount: 0`. Check `.ok` before ever reading `.structured` and poison the aggregate (`return { status: "unreviewed", failed: review.error }`), and mark the gate `required: true` so its failure stops the run instead of resolving `ok: false`. Every run also reports `incompletePhases` — declared phases with no successful agent — computed from agent state rather than from whatever the script returned, and a transport error _after_ a recorded `structured_output` is treated as a delivery failure: the validated result stands, `ok` stays true, and the fault is reported as `deliveryError`. [docs/dsl.md](docs/dsl.md) has the reasoning.
 
 ## DSL reference
 
@@ -60,6 +63,7 @@ The async script receives only `phase(title)`, `agent(prompt, options)`, `parall
 | `tools`             | `"read-only"` removes `write`/`edit` and puts bash behind the command policy.        |
 | `allowCommands`     | Command globs a governed agent may run, e.g. `["npm run *", "dotnet *"]`.            |
 | `writeScope`        | Path globs `write`/`edit` are fenced to, e.g. `["client/**"]`.                       |
+| `required`          | Gate: this agent failing stops the run instead of resolving `ok: false`.             |
 
 Declare a conditional phase as `{ title, optional: true }` so a clean run reports it as skipped rather than pending. Unknown option keys are rejected rather than ignored, so a typo such as `thinking` fails immediately instead of silently inheriting a default.
 
@@ -83,14 +87,11 @@ Each run is checkpointed under `~/.pi/agent/workflows/<runId>/` with `script.js`
 - The useful concurrency ceiling is below the policy cap of 4 when agents run compilers, because they contend for CPU. Pass a lower `concurrency` to `parallel()`.
 - Run each verification gate as its own bash call even with a raised `toolTimeoutMs`; it keeps failure attribution clean.
 - **Windows:** a bash shell is required (Git Bash, MSYS2, Cygwin, or WSL) because pi resolves bash on Windows and throws without it. PowerShell is not used as the child shell; supporting it would require a change in pi itself.
-
-## Effect beta pin
-
-Runtime services pin `effect` exactly to `4.0.0-beta.101`. Effect v4 is beta software; change the pin only with a full gate run.
+- Runtime services pin `effect` exactly to `4.0.0-beta.101`. Effect v4 is beta software; change the pin only with a full gate run.
 
 ## Differences from upstream
 
-Ported from [`davis7dotsh/my-pi-setup`](https://github.com/davis7dotsh/my-pi-setup) and since extended. `toolTimeoutMs`, `tools`, `allowCommands`, `writeScope`, optional phases, unknown-key rejection, and pre-run model validation are additions and are not upstream DSL.
+Ported from [`davis7dotsh/my-pi-setup`](https://github.com/davis7dotsh/my-pi-setup) and since extended. `toolTimeoutMs`, `tools`, `allowCommands`, `writeScope`, `required`, optional phases, unknown-key rejection, pre-run model validation, `incompletePhases`, and delivery-failure salvage are additions and are not upstream DSL.
 
 ## Verify
 

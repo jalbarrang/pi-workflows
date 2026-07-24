@@ -36,6 +36,8 @@ export interface AgentRecord {
   startedAt: number;
   finishedAt?: number;
   error?: string;
+  /** Transport fault after a recorded result: the agent is `done`, not failed. */
+  deliveryError?: string;
   preview: string;
   usage: AgentUsage;
   transcript: TranscriptEntry[];
@@ -57,6 +59,14 @@ export interface WorkflowDetails {
   resultArtifact?: string;
   transcriptArtifact?: string;
   error?: string;
+  /**
+   * Declared phases that produced no successful agent. Machine-readable and
+   * independent of whatever the script chose to return, so a phase that silently
+   * produced nothing cannot read as a phase that ran clean.
+   */
+  incompletePhases?: string[];
+  /** Why a `required: true` agent stopped the run. */
+  requiredFailure?: string;
 }
 
 export interface ActiveRun {

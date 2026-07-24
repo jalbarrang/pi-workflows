@@ -52,6 +52,9 @@ export function renderDetail(state: DashboardState, width: number, height: numbe
       `${cursor} ${stateSquare(agent, theme)} ${agent.label}`,
       `    ${[usage, stats].filter(Boolean).join(" · ")}`,
       ...(agent.error ? [`    ${theme.fg("error", agent.error)}`] : []),
+      ...(agent.deliveryError
+        ? [`    ${theme.fg("dim", `delivery failed after result: ${agent.deliveryError}`)}`]
+        : []),
     ];
   });
   for (let index = 0; index < paneHeight; index++) {

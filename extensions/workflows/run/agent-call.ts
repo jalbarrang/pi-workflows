@@ -1,7 +1,9 @@
 import { createWorkflowResources, runAgent } from "../agent/index.ts";
 import { unknownOptionKeyError } from "../sandbox/index.ts";
+import { abortForFailedGate, applyAgentOutcome } from "./agent-outcome.ts";
 import { createAgentRecord, failRecord } from "./agent-record.ts";
 import { resolveAgentOptions } from "./agent-options.ts";
+import { isRequestedGate } from "./required-resolution.ts";
 import type { AgentCallOptions, ScriptAgentResult } from "./input.ts";
 import { PREVIEW_LENGTH } from "./limits.ts";
 import type { RunRuntime } from "./runtime.ts";
@@ -19,7 +21,12 @@ export function createAgentCall(runtime: RunRuntime) {
     const options =
       optionsValue && typeof optionsValue === "object" ? (optionsValue as AgentCallOptions) : {};
     const record = createAgentRecord(runtime, options);
-    const fail = (message: string) => failRecord(runtime, record, message);
+    const fail = (message: string) => {
+      const result = failRecord(runtime, record, message);
+      // A gate that never got to run is still a failed gate.
+      if (isRequestedGate(options)) abortForFailedGate(runtime, record, message);
+      return result;
+    };
     const prompt = typeof promptValue === "string" ? promptValue : String(promptValue ?? "");
     if (!prompt.trim()) return fail("agent() requires a non-empty prompt string");
     if (unknownKeys.length > 0) return fail(unknownOptionKeyError(record.label, unknownKeys));
@@ -75,24 +82,7 @@ export function createAgentCall(runtime: RunRuntime) {
             runtime.emit();
           },
         });
-        runtime.state.update(() => {
-          record.usage = outcome.usage;
-          record.model = outcome.model ?? record.model;
-          record.contextWindow = outcome.contextWindow ?? record.contextWindow;
-          record.transcript = outcome.transcript;
-          record.preview = (outcome.output || record.preview).slice(0, PREVIEW_LENGTH);
-          record.finishedAt = Date.now();
-          record.state = outcome.ok ? "done" : "error";
-          record.error = outcome.ok ? undefined : (outcome.error ?? "Agent failed");
-        });
-        runtime.persistence.checkpoint();
-        runtime.emit();
-        return {
-          ok: outcome.ok,
-          output: outcome.output,
-          ...(outcome.structured === undefined ? {} : { structured: outcome.structured }),
-          ...(outcome.error === undefined ? {} : { error: outcome.error }),
-        };
+        return applyAgentOutcome(runtime, record, outcome, resolved.required);
       }, invocation)
       .catch((error) => fail(errorText(error)));
   };

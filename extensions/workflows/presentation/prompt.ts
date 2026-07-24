@@ -1,5 +1,6 @@
-const prose = (...parts: string[]) => parts.join(" ");
-const code = (...parts: string[]) => parts.join("");
+import { WORKFLOW_EXAMPLE_LINES } from "./prompt-example.ts";
+import { prose } from "./prompt-parts.ts";
+
 export const WORKFLOW_PARAMETER_DESCRIPTIONS = {
   script: prose(
     "JavaScript workflow script. May start with `export const meta = {...}`, then use",
@@ -25,9 +26,11 @@ export const WORKFLOW_TOOL_DESCRIPTION = [
   ),
   "• phase(title) — mark the current runtime phase using a title declared in meta.phases.",
   prose(
-    "• await agent(prompt, { label?, phase?, schema?, model?, provider?, effort? }) — run one",
-    "isolated subagent. It always resolves { ok, output, structured?, error? }; check ok. A JSON",
+    "• await agent(prompt, { label?, phase?, schema?, model?, provider?, effort?, required? }) — run",
+    "one isolated subagent. It always resolves { ok, output, structured?, error? }; check ok before",
+    "reading structured, never after. A JSON",
     "schema returns a validated object in structured after a terminating structured_output call.",
+    "Pass required: true for a gate whose failure must stop the run instead of resolving ok: false.",
     "Model/provider override the parent",
     "model; effort is off|minimal|low|medium|high|xhigh|max. Children receive normal trust-aware",
     "resources but cannot orchestrate recursively or ask the user.",
@@ -47,31 +50,13 @@ export const WORKFLOW_TOOL_DESCRIPTION = [
   ),
   prose(
     "Use schema whenever later steps branch on a result so they consume typed fields, not prose.",
+    "When a later step gates on structured output, check ok and poison the aggregate",
+    "(return { status: 'unreviewed', ... }) — an empty result and an absent result are not the same",
+    "thing, and `(r.structured && r.structured.blocking) || []` collapses them into a false pass.",
     "Failed runs are re-run, not resumed.",
     "Artifacts are under ~/.pi/agent/workflows/<runId>/.",
   ),
-  "Example:",
-  code(
-    "export const meta = { name: 'reliability-review', description: 'Review modules, then report',",
-    " phases: [{ title: 'Scan' }, { title: 'Report' }] }",
-  ),
-  code(
-    "const FINDINGS = { type: 'object', properties: { issues: { type: 'array', items: ",
-    "{ type: 'string' } }, ok: { type: 'boolean' } }, required: ['issues', 'ok'] }",
-  ),
-  "phase('Scan')",
-  code(
-    "const scans = await parallel(args.files.map((file) => () => agent(`Review ${file} for ",
-    "correctness and reliability risks.`, { label: `scan:${file}`, phase: 'Scan', ",
-    "schema: FINDINGS })))",
-  ),
-  "const findings = scans.filter((result) => result.ok).map((result) => result.structured)",
-  "phase('Report')",
-  code(
-    "const report = await agent(`Summarize: ${JSON.stringify(findings)}`, ",
-    "{ label: 'report', phase: 'Report' })",
-  ),
-  "return { findings, report: report.ok ? report.output : report.error }",
+  ...WORKFLOW_EXAMPLE_LINES,
 ].join("\n");
 export const WORKFLOW_PROMPT_SNIPPET = prose(
   "Orchestrate isolated subagents from inline JavaScript with phase(), agent(), parallel(),",
@@ -84,6 +69,10 @@ export const WORKFLOW_PROMPT_GUIDELINES = [
     "small delegation in the parent session.",
   ),
   "In workflow scripts, agent() never throws; always check `.ok` before using its result.",
+  prose(
+    "Mark review or verification agents `required: true` so a dead gate stops the run instead of",
+    "resolving `{ ok: false }` that a terse aggregate can read as a clean pass.",
+  ),
 ];
 export const STRUCTURED_OUTPUT_SYSTEM_INSTRUCTION = prose(
   "When your task is complete, call the `structured_output` tool exactly once as your final action,",

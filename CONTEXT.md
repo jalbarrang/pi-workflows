@@ -9,6 +9,9 @@
 - **Artifact**: a bounded, durable record of a run.
 - **Transcript**: a bounded projection of an agent conversation, including reasoning and tool activity.
 - **Optional phase**: a declared phase a run may legitimately never enter, reported as skipped rather than outstanding.
+- **Incomplete phase**: a declared, non-skipped phase that produced no successful agent.
+- **Gate**: an agent call whose failure stops the run instead of resolving a failed result.
+- **Delivery failure**: a transport fault that arrives after an agent's result was already recorded; the work stands.
 - **Command policy**: the ruling on whether a governed agent may run a given shell command.
 - **Write scope**: the set of paths a scoped agent is permitted to modify.
 - **Governed agent**: an agent call whose shell commands and file writes are subject to policy rather than instruction.

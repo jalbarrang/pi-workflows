@@ -21,6 +21,8 @@ export interface AgentOutcome {
   output: string;
   structured?: unknown;
   error?: string;
+  /** Transport fault that arrived after the result was already recorded. */
+  deliveryError?: string;
   aborted: boolean;
   usage: AgentUsage;
   model?: string;

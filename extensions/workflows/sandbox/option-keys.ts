@@ -16,6 +16,7 @@ export const AGENT_OPTION_KEYS = [
   "tools",
   "allowCommands",
   "writeScope",
+  "required",
 ] as const;
 
 export type AgentOptionKey = (typeof AGENT_OPTION_KEYS)[number];

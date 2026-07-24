@@ -11,6 +11,11 @@ export interface ScriptAgentResult {
   output: string;
   structured?: unknown;
   error?: string;
+  /**
+   * Set on an otherwise successful result when the agent's answer was recorded
+   * but its transport then died. The work stands; the delivery did not.
+   */
+  deliveryError?: string;
 }
 
 /**

@@ -18,12 +18,19 @@ export function buildWorkflowResultMessage(details: WorkflowDetails, runDir: str
     `Run dir: ${shortenHome(runDir)}`,
   ];
   if (details.error) lines.push(`Error: ${details.error}`);
+  // Independent of the script's return value: a declared phase that produced
+  // nothing must not be readable as a phase that ran clean.
+  if (details.incompletePhases?.length) {
+    lines.push(`Incomplete phases (no successful agent): ${details.incompletePhases.join(", ")}`);
+  }
   if (details.agents.length) {
     lines.push("", "Agents:");
     for (const agent of details.agents) {
       const state = agent.state === "done" ? "ok" : agent.state === "error" ? "FAILED" : "running";
       const phase = agent.phase ? ` (${agent.phase})` : "";
-      lines.push(`- [${agent.label}]${phase} ${state}${agent.error ? ` — ${agent.error}` : ""}`);
+      const note =
+        agent.error ?? (agent.deliveryError && `delivery failed: ${agent.deliveryError}`);
+      lines.push(`- [${agent.label}]${phase} ${state}${note ? ` — ${note}` : ""}`);
     }
   }
   if (details.result !== undefined) lines.push("", "Result:", resultJson(details.result));

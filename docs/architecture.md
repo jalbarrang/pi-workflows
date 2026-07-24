@@ -37,8 +37,9 @@ Three infrastructure seams are Effect services, each a `Context.Service` with a 
 3. **Setup** — run id, run directory, `script.js` and optional `args.json` written, an initial persist through `ArtifactStore`, then `WorkflowState`, the checkpoint scheduler, a `RunController`, and the progress emitter.
 4. **Execution** — `run/settle.ts` calls `run/script.ts`, which asks `SandboxRunner` to spawn the child. The child executes the script and calls back over IPC.
 5. **Agent callbacks** — `sandbox/agent-message.ts` validates each request against the protocol bounds and hands it to `run/agent-call.ts`, which creates the agent record, validates options, then schedules through `RunController`.
-6. **Agent run** — `agent/runner.ts` creates the child session, arms the first-response watchdog, guards every tool call with a timeout, and projects usage and a bounded transcript as it goes.
-7. **Settle** — the controller seals, waits a bounded time for in-flight agents, marks any orphan as errored, sets the terminal status, and flushes artifacts synchronously.
+6. **Agent run** — `agent/runner.ts` creates the child session, arms the first-response watchdog, guards every tool call with a timeout, and projects usage and a bounded transcript as it goes. `agent/outcome.ts` turns the end state into a verdict, separating a work failure from a delivery failure (a transport fault after a recorded `structured_output`).
+7. **Outcome projection** — `run/agent-outcome.ts` writes the verdict onto the agent record and, when the call was `required`, records `requiredFailure` and aborts the run.
+8. **Settle** — the controller seals, waits a bounded time for in-flight agents, marks any orphan as errored, computes `incompletePhases`, applies `gateStatus`, sets the terminal status, and flushes artifacts synchronously.
 
 Blocking runs emit throttled progress into the tool block. Background runs return a launch message immediately and deliver the settled result as a follow-up message.
 

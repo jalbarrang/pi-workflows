@@ -23,6 +23,9 @@ export function buildReport(details: WorkflowDetails) {
   if (totals) lines.push(`- Usage: ${totals}`);
   if (details.description) lines.push("", details.description);
   if (details.error) lines.push("", `**Error:** ${details.error}`);
+  if (details.incompletePhases?.length) {
+    lines.push("", `**Incomplete phases:** ${details.incompletePhases.join(", ")}`);
+  }
   for (const group of phaseGroups(details, true)) {
     lines.push("", `## ${group.title}`, "");
     if (!group.agents.length) lines.push(group.optional ? "_skipped (optional)_" : "_no agents_");
@@ -37,6 +40,8 @@ export function buildReport(details: WorkflowDetails) {
         .join(" · ");
       lines.push(`- **${agent.label}** — ${state}${stats ? ` (${stats})` : ""}`);
       if (agent.error) lines.push(`  - error: ${agent.error}`);
+      if (agent.deliveryError)
+        lines.push(`  - delivery failed after result: ${agent.deliveryError}`);
     }
   }
   if (details.result !== undefined) {

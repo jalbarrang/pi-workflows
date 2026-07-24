@@ -1,3 +1,4 @@
+export { classifyAgentOutcome } from "./outcome.ts";
 export { createWorkflowResources } from "./resources.ts";
 export { runAgent } from "./runner.ts";
 export {
@@ -8,6 +9,7 @@ export {
 export { recordToolExecutionTiming } from "./timing.ts";
 export { transcriptFromMessages } from "./transcript.ts";
 export { createFirstResponseWatchdog } from "./watchdog.ts";
+export type { OutcomeSignals, OutcomeVerdict } from "./outcome.ts";
 export type {
   AgentOutcome,
   RunAgentOptions,
