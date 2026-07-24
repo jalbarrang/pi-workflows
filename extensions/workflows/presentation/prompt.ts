@@ -27,7 +27,8 @@ export const WORKFLOW_TOOL_DESCRIPTION = [
   "• phase(title) — mark the current runtime phase using a title declared in meta.phases.",
   prose(
     "• await agent(prompt, { label?, phase?, schema?, model?, provider?, effort?, required? }) — run",
-    "one isolated subagent. It always resolves { ok, output, structured?, error? }; check ok before",
+    "one isolated subagent. It always resolves { ok, output, structured?, error?, deniedCommands? };",
+    "check ok before",
     "reading structured, never after. A JSON",
     "schema returns a validated object in structured after a terminating structured_output call.",
     "Pass required: true for a gate whose failure must stop the run instead of resolving ok: false.",
@@ -69,6 +70,10 @@ export const WORKFLOW_PROMPT_GUIDELINES = [
     "small delegation in the parent session.",
   ),
   "In workflow scripts, agent() never throws; always check `.ok` before using its result.",
+  prose(
+    "A writeScope agent may relocate files with a bare `git mv` inside its fence; check",
+    "`deniedCommands` on a result that claims success but changed nothing.",
+  ),
   prose(
     "Mark review or verification agents `required: true` so a dead gate stops the run instead of",
     "resolving `{ ok: false }` that a terse aggregate can read as a clean pass.",

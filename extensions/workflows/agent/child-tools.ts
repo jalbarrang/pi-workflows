@@ -3,6 +3,12 @@ import { createPolicyBashTool } from "./policy-bash.ts";
 import { createScopedWriteTools } from "./scoped-tools.ts";
 import { makeStructuredOutputTool } from "./structured.ts";
 import type { RunAgentOptions } from "./types.ts";
+import { createWriteFence } from "./write-scope.ts";
+
+export interface ChildToolHooks {
+  structured(value: unknown): void;
+  denied?(command: string): void;
+}
 
 /**
  * Assemble the custom tools a child session needs, as data.
@@ -13,18 +19,24 @@ import type { RunAgentOptions } from "./types.ts";
  */
 export function buildChildCustomTools(
   options: RunAgentOptions,
-  capture: (value: unknown) => void,
+  hooks: ChildToolHooks,
 ): ToolDefinition[] {
   const tools: ToolDefinition[] = [];
   if (options.schema !== undefined) {
-    tools.push(makeStructuredOutputTool(options.schema, capture));
+    tools.push(makeStructuredOutputTool(options.schema, hooks.structured));
   }
   const governed = options.policyGoverned ?? options.readOnly === true;
+  // A fence exists only where write tools do: a read-only agent must not relocate.
+  const fenced = options.writeScope && !options.readOnly ? options.writeScope : undefined;
   if (governed && options.checkCommand) {
-    tools.push(createPolicyBashTool(options.cwd, options.checkCommand, options.allowCommands));
+    tools.push(
+      createPolicyBashTool(options.cwd, options.checkCommand, {
+        ...(options.allowCommands ? { allowCommands: options.allowCommands } : {}),
+        ...(fenced ? { fence: createWriteFence(options.cwd, fenced) } : {}),
+        ...(hooks.denied ? { onDenied: hooks.denied } : {}),
+      }),
+    );
   }
-  if (options.writeScope && !options.readOnly) {
-    tools.push(...createScopedWriteTools(options.cwd, options.writeScope));
-  }
+  if (fenced) tools.push(...createScopedWriteTools(options.cwd, fenced));
   return tools;
 }

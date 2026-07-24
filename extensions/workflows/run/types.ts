@@ -38,6 +38,8 @@ export interface AgentRecord {
   error?: string;
   /** Transport fault after a recorded result: the agent is `done`, not failed. */
   deliveryError?: string;
+  /** Commands the command policy refused during this agent's run. */
+  deniedCommands?: string[];
   preview: string;
   usage: AgentUsage;
   transcript: TranscriptEntry[];

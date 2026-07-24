@@ -51,7 +51,7 @@ return { blocking, fixed: blocking.length > 0 };
 
 ## DSL reference
 
-The async script receives only `phase(title)`, `agent(prompt, options)`, `parallel(thunks, options)`, and `args`. `agent()` always resolves `{ ok, output, structured?, error? }`; check `ok`. A run allows 32 agent calls with global concurrency 4. Pass `background: true` to return immediately and receive a follow-up after settlement; blocking runs render throttled live progress.
+The async script receives only `phase(title)`, `agent(prompt, options)`, `parallel(thunks, options)`, and `args`. `agent()` always resolves `{ ok, output, structured?, error?, deliveryError?, deniedCommands? }`; check `ok`. A run allows 32 agent calls with global concurrency 4. Pass `background: true` to return immediately and receive a follow-up after settlement; blocking runs render throttled live progress.
 
 | Option              | Meaning                                                                              |
 | ------------------- | ------------------------------------------------------------------------------------ |
@@ -65,13 +65,13 @@ The async script receives only `phase(title)`, `agent(prompt, options)`, `parall
 | `writeScope`        | Path globs `write`/`edit` are fenced to, e.g. `["client/**"]`.                       |
 | `required`          | Gate: this agent failing stops the run instead of resolving `ok: false`.             |
 
-Declare a conditional phase as `{ title, optional: true }` so a clean run reports it as skipped rather than pending. Unknown option keys are rejected rather than ignored, so a typo such as `thinking` fails immediately instead of silently inheriting a default.
+Declare a conditional phase as `{ title, optional: true }` so a clean run reports it as skipped rather than pending. Unknown option keys are rejected rather than ignored, so a typo such as `thinking` fails immediately instead of silently inheriting a default. Commands the policy refused come back as `deniedCommands` on the result and in the run report, so an agent that did nothing because it was blocked is distinguishable from one that had nothing to do.
 
 ## What is actually enforced
 
 `tools: "read-only"` and `writeScope` both route bash through a command policy — a path fence that bash can write around is not a fence. The policy parses each command segment, denies redirects and command substitution, and applies a deny list that `allowCommands` cannot override: shell re-entry, PowerShell, command wrappers such as `env`/`xargs`/`timeout`, interpreter eval flags such as `node -e`, and fetch-and-run launchers such as `npx`.
 
-`writeScope` resolves symlinks and canonical casing before matching, so neither a symlink inside the scope nor a case-only variant escapes it. Requests outside the working directory are refused outright. Two honest limits remain: `allowCommands` grants whatever those commands do, so allowing `npm run *` grants every script in the repo's `package.json`, and a workflow with no `tools` or `writeScope` is unrestricted exactly as before.
+`writeScope` resolves symlinks and canonical casing before matching, so neither a symlink inside the scope nor a case-only variant escapes it. Requests outside the working directory are refused outright. A write-scoped agent may run one mutating command — a bare `git mv` whose source and destination both land inside the fence, with no flags beyond `-v`/`-n`, no shell metacharacters, and no chaining — because a fenced agent that cannot rename a file cannot extract a module. `mv`, `cp`, `rm`, and `git mv -f` stay denied and `allowCommands` cannot re-enable them. Two honest limits remain: `allowCommands` grants whatever those commands do, so allowing `npm run *` grants every script in the repo's `package.json`, and a workflow with no `tools` or `writeScope` is unrestricted exactly as before.
 
 ## Inspect runs
 

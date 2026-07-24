@@ -28,7 +28,7 @@ export async function runAgent(options: RunAgentOptions): Promise<AgentOutcome> 
       transcript: [],
     };
   }
-  const { session, structured, stopGuard } = created;
+  const { session, structured, denied, stopGuard } = created;
   const observer = observeSession(session, options);
   let aborted = false;
   let abortPromise: Promise<void> | undefined;
@@ -60,8 +60,10 @@ export async function runAgent(options: RunAgentOptions): Promise<AgentOutcome> 
   const output = truncateUtf8(finalOutput(session.messages), OUTPUT_MAX_BYTES);
   const transcript = transcriptFromMessages(session.messages, observer.timings);
   await shutdownChildSession(session);
+  const deniedCommands = denied();
   const base = {
     output,
+    ...(deniedCommands.length > 0 ? { deniedCommands } : {}),
     usage: projection.usage,
     model: projection.model,
     contextWindow: projection.contextWindow,

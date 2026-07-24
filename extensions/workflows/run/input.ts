@@ -16,6 +16,11 @@ export interface ScriptAgentResult {
    * but its transport then died. The work stands; the delivery did not.
    */
   deliveryError?: string;
+  /**
+   * Commands the policy refused. Present so an orchestrator can tell an agent
+   * that had nothing to do from one that was blocked from doing it.
+   */
+  deniedCommands?: string[];
 }
 
 /**

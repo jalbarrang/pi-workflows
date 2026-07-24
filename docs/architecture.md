@@ -15,7 +15,7 @@ Each directory under `extensions/workflows/` is a context with a small public su
 | `agent/`        | Create child sessions, apply tool policy, inject structured output, arm the watchdog, guard tool calls, project transcripts and usage.  | `policy/`, `artifacts/`, `run/` types |
 | `run/`          | The run aggregate and its lifecycle: option resolution, scheduling, budget, abort, settle, progress emission.                           | all of the above                      |
 | `artifacts/`    | Bounded serialization, atomic writes, throttled checkpoints.                                                                            | none                                  |
-| `policy/`       | Decide whether a governed agent may run a command.                                                                                      | `@dreki-gg/pi-command-sandbox`        |
+| `policy/`       | Decide whether a governed agent may run a command, including an in-fence relocation. Knows nothing about paths — the fence is injected. | `@dreki-gg/pi-command-sandbox`        |
 | `presentation/` | Model-facing prompt text, tool renderers, the `/workflows` dashboard, the footer indicator.                                             | `run/` types                          |
 
 `extensions/workflows/index.ts` is the composition root and stays thin: it registers the tool and command, builds the service layer, and wires hooks. Business logic does not live there.

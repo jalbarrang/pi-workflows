@@ -4,12 +4,12 @@
 
 A script is the body of an async function. It receives four globals and returns a JSON-serializable value. It cannot import, evaluate, reach the filesystem or network, or start a process — see [security.md](security.md).
 
-| Primitive                    | Contract                                                                                              |
-| ---------------------------- | ----------------------------------------------------------------------------------------------------- |
-| `phase(title)`               | Marks the current phase for progress display. An undeclared title is appended to the phase list.      |
-| `agent(prompt, options?)`    | Runs one isolated child agent. Always resolves `{ ok, output, structured?, error?, deliveryError? }`. |
-| `parallel(thunks, options?)` | Runs zero-argument thunks concurrently, preserving result order.                                      |
-| `args`                       | The parsed `args` tool parameter, or `undefined`. Frozen.                                             |
+| Primitive                    | Contract                                                                                                               |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `phase(title)`               | Marks the current phase for progress display. An undeclared title is appended to the phase list.                       |
+| `agent(prompt, options?)`    | Runs one isolated child agent. Always resolves `{ ok, output, structured?, error?, deliveryError?, deniedCommands? }`. |
+| `parallel(thunks, options?)` | Runs zero-argument thunks concurrently, preserving result order.                                                       |
+| `args`                       | The parsed `args` tool parameter, or `undefined`. Frozen.                                                              |
 
 `export const meta = { name, description, phases }` is optional and is read statically — never evaluated. It is removed from the executable source with line numbers preserved, so runtime stack lines still match what the model wrote.
 
@@ -47,7 +47,7 @@ The accepted keys are owned by `sandbox/option-keys.ts`. Their runtime meaning:
 - `toolTimeoutMs` — per-tool-call timeout for this agent, bounded above. Rejected rather than clamped.
 - `tools` — currently only `"read-only"`: removes `write`/`edit` and routes bash through the command policy.
 - `allowCommands` — command globs a governed agent may run. `*` matches within one argument; a trailing `*` matches the rest of the command. Only valid when the agent is governed.
-- `writeScope` — path globs `write`/`edit` are fenced to. Implies the agent is governed, because a fence bash can write around is not a fence.
+- `writeScope` — path globs `write`/`edit` are fenced to. Implies the agent is governed, because a fence bash can write around is not a fence. Also permits a bare `git mv` between two in-scope paths; see [security.md](security.md) for the bounds.
 - `required` — booleans only. Marks the call a gate: any failure, including one that happens before scheduling, aborts the run. A truthy string would silently arm or disarm a gate, so it is rejected.
 
 ## Validation order
@@ -58,6 +58,10 @@ Two rejections exist purely to stop an option from being inert:
 
 - `allowCommands` without `tools: "read-only"` or `writeScope` — bash would be unrestricted, so the patterns would do nothing.
 - `writeScope` together with `tools: "read-only"` — read-only removes `write`/`edit`, so there is nothing left to fence.
+
+## Blocked is not the same as unneeded
+
+Every command the policy refuses is recorded and returned as `deniedCommands` on the agent result, and rendered in the tool result, the dashboard, and `report.md`. A denial reaches the child as an error tool result, so an agent is free to adapt — and adapting frequently means finishing successfully having changed nothing. In run `wf_502f35f143f6` two of three write agents returned `ok: true` after their required `git mv` was refused, and only the third said so. The log is deduplicated and capped in `agent/denied.ts`; it is a signal for the orchestrator, not an audit trail.
 
 ## Static preflight
 

@@ -52,6 +52,19 @@ export function resolveScopedPath(cwd: string, requested: string) {
   return rel.split(sep).join("/");
 }
 
+/**
+ * Express a write scope as the fence the command policy asks about.
+ *
+ * The policy decides commands and knows nothing about paths; this hands it the one
+ * question it needs answered, with canonicalization already applied.
+ */
+export function createWriteFence(cwd: string, globs: readonly string[]) {
+  return {
+    inScope: (path: string) => checkWriteScope(cwd, path, globs).allowed,
+    describe: () => globs.join(", "),
+  };
+}
+
 /** Decide whether a write may proceed, returning the denial reason when it may not. */
 export function checkWriteScope(cwd: string, requested: string, globs: readonly string[]) {
   const relativePath = resolveScopedPath(cwd, requested);

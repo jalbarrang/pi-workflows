@@ -10,7 +10,7 @@ import type { RunAgentOptions } from "../agent/types.ts";
 
 const base = { prompt: "p", cwd: process.cwd() } as unknown as RunAgentOptions;
 const names = (options: Partial<RunAgentOptions>) =>
-  buildChildCustomTools({ ...base, ...options } as RunAgentOptions, () => {}).map(
+  buildChildCustomTools({ ...base, ...options } as RunAgentOptions, { structured: () => {} }).map(
     (tool) => tool.name,
   );
 

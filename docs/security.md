@@ -30,6 +30,8 @@ An agent is _governed_ when it is `read-only` or has a `writeScope`. For governe
 
 **`policy/deny.ts` cannot be widened.** This is the important part. `allowCommands` feeds the _safe_ list, so a plausible pattern such as `node *` would otherwise also permit `node -e '<anything>'`, and `sh *` would hand over an entire shell. The deny list is passed as destructive patterns, which are evaluated first, and it covers shell re-entry, PowerShell, wrappers that execute a different binary than the one matched (`env`, `xargs`, `timeout`, …), eval builtins, interpreter eval flags, and fetch-and-run launchers. Both of those escapes were live and were caught by the escape suite.
 
+**One relocation is allowed inside a fence.** A write-scoped agent may run a bare `git mv` when both operands resolve inside its scope. `policy/relocate.ts` parses it and refuses on any shell metacharacter, quote, glob, extra operand, or flag outside `-v`/`-n`, so `git mv a b && rm -rf .` never reaches the allowance; `agent/write-scope.ts` then answers whether each path is in scope, which means the same canonicalization that protects `write` protects this. Read-only agents get no fence and therefore no relocation, and `allowCommands` still cannot widen `mv`, `cp`, `rm`, or `git mv -f`. This exists because a fenced agent that cannot rename a file cannot perform the module extraction a fence is most wanted for — in run `wf_502f35f143f6` three agents were spent discovering that.
+
 **Writes** go through `agent/write-scope.ts`. A path is canonicalized by resolving the closest existing ancestor with the native realpath and re-appending the remainder. That single mechanism defeats two bypasses: a symlink inside the scope pointing out of it, and a case-only variant such as `Client/x` for a real `client/` on a case-insensitive filesystem. Anything resolving outside the working directory is refused before glob matching happens.
 
 Note that Node's permission model deliberately follows symlinks out of granted paths, so it cannot be used for scoping. That is why canonicalization is done in our code.
@@ -41,6 +43,7 @@ State these plainly; do not let documentation imply more.
 - **`allowCommands` inherits everything those commands can do.** Allowing `npm run *` allows every script in the repository's `package.json`.
 - **An ungoverned agent is unrestricted.** A workflow with no `tools` and no `writeScope` gets the full built-in tool set, exactly as before this feature existed.
 - **The permission model is a seat belt, not a sandbox for hostile code.** Node's own documentation says so. Our layering raises the cost of an escape; it does not make the host safe against a determined attacker who can choose the script.
+- **`git mv` inside a fence is still a mutation.** It cannot clobber and cannot leave the work tree, and it is visible as a rename in the diff, but it does change the index. If that is unacceptable for a given run, do not give the agent a `writeScope`; do the relocation from the orchestrator instead.
 - **The command parser is POSIX.** It is correct on every platform pi supports, because pi requires a bash shell on Windows too — but PowerShell syntax would not be parsed correctly, which is exactly why invoking PowerShell is denied outright rather than inspected.
 
 ## Changing any of this

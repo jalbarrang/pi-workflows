@@ -23,6 +23,8 @@ export interface AgentOutcome {
   error?: string;
   /** Transport fault that arrived after the result was already recorded. */
   deliveryError?: string;
+  /** Commands the policy refused, so "blocked" is distinguishable from "unneeded". */
+  deniedCommands?: string[];
   aborted: boolean;
   usage: AgentUsage;
   model?: string;

@@ -55,6 +55,9 @@ export function renderDetail(state: DashboardState, width: number, height: numbe
       ...(agent.deliveryError
         ? [`    ${theme.fg("dim", `delivery failed after result: ${agent.deliveryError}`)}`]
         : []),
+      ...(agent.deniedCommands?.length
+        ? [`    ${theme.fg("dim", `denied: ${agent.deniedCommands.join(", ")}`)}`]
+        : []),
     ];
   });
   for (let index = 0; index < paneHeight; index++) {

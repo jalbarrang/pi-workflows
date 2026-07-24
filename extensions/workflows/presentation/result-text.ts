@@ -31,6 +31,10 @@ export function buildWorkflowResultMessage(details: WorkflowDetails, runDir: str
       const note =
         agent.error ?? (agent.deliveryError && `delivery failed: ${agent.deliveryError}`);
       lines.push(`- [${agent.label}]${phase} ${state}${note ? ` — ${note}` : ""}`);
+      // A blocked agent frequently reports success having changed nothing.
+      if (agent.deniedCommands?.length) {
+        lines.push(`  denied commands: ${agent.deniedCommands.join(", ")}`);
+      }
     }
   }
   if (details.result !== undefined) lines.push("", "Result:", resultJson(details.result));
