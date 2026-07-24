@@ -30,9 +30,9 @@ jobs:
         run: bash --version
         shell: bash
       - run: pnpm install --frozen-lockfile
-      - run: pnpm format:check
       - run: pnpm typecheck
       - run: pnpm lint
+      - run: pnpm format:check
       - run: pnpm line-count
       - run: pnpm test
       - run: npm pack --dry-run

@@ -37,15 +37,13 @@ jobs:
         with:
           node-version: 24
 
-      - uses: oven-sh/setup-bun@v2
-
       - run: pnpm install --frozen-lockfile
-
-      - run: pnpm format:check
 
       - run: pnpm typecheck
 
       - run: pnpm lint
+
+      - run: pnpm format:check
 
       - run: pnpm line-count
 
@@ -53,10 +51,12 @@ jobs:
 
       - run: npm pack --dry-run
 
-      # npm >= 11.5.1 required for OIDC trusted publishing; Node 24 ships it
       - uses: actions/setup-node@v4
         with:
           node-version: 24
           registry-url: https://registry.npmjs.org
+
+      # npm >= 11.5.1 is required for OIDC trusted publishing.
+      - run: npm install --global npm@11
 
       - run: npm publish
