@@ -3,10 +3,11 @@ const vm = require("node:vm");
 const BOOTSTRAP = require("./child-api.cjs");
 const INVOKE = require("./child-invoke.cjs");
 
-module.exports = function run(source, argsJson, callHost) {
+module.exports = function run(source, argsJson, callHost, previousJson) {
   const sandbox = Object.create(null);
   sandbox.__argsJson = argsJson;
   sandbox.__hostBridge = callHost;
+  if (typeof previousJson === "string") sandbox.__previousJson = previousJson;
   const context = vm.createContext(sandbox, {
     name: "pi-workflow",
     codeGeneration: { strings: false, wasm: false },
@@ -16,7 +17,7 @@ module.exports = function run(source, argsJson, callHost) {
   });
   const workflow = vm.compileFunction(
     `"use strict";\nreturn (async function workflow() {\n${source}\n})();`,
-    ["agent", "parallel", "phase", "args"],
+    ["agent", "parallel", "phase", "args", "previous"],
     { filename: "workflow-script.js", parsingContext: context },
   );
   context.__workflowBody = workflow;

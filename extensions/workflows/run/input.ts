@@ -4,6 +4,8 @@ export interface WorkflowInput {
   script: string;
   args?: string;
   background?: boolean;
+  /** Run id whose returned value is exposed to this script as `previous`. */
+  resume?: string;
 }
 
 export interface ScriptAgentResult {

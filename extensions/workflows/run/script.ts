@@ -4,10 +4,16 @@ import type { PreparedWorkflowScript } from "../scripting/index.ts";
 import { createAgentCall } from "./agent-call.ts";
 import type { RunRuntime } from "./runtime.ts";
 
+export interface ScriptInputs {
+  args: unknown;
+  /** A previous run's returned value, already read and bounded. */
+  previousJson?: string;
+}
+
 export async function runWorkflowScript(
   runtime: RunRuntime,
   prepared: PreparedWorkflowScript,
-  args: unknown,
+  inputs: ScriptInputs,
   layer: Layer.Layer<SandboxRunner>,
 ) {
   const onAgent = createAgentCall(runtime);
@@ -15,7 +21,8 @@ export async function runWorkflowScript(
     const sandbox = yield* SandboxRunner;
     return yield* sandbox.run({
       source: prepared.source,
-      args,
+      args: inputs.args,
+      ...(inputs.previousJson === undefined ? {} : { previousJson: inputs.previousJson }),
       cwd: runtime.context.cwd,
       signal: runtime.controller.signal,
       onAgent,

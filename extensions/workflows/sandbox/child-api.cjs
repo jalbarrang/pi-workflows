@@ -18,6 +18,10 @@ module.exports = String.raw`
   const envelope = JSON.parse(globalThis.__argsJson);
   const args = envelope.defined ? deepFreeze(envelope.value) : undefined;
   delete globalThis.__argsJson;
+  // A previous run's returned value, frozen like args. Absent unless resuming.
+  const previousJson = globalThis.__previousJson;
+  const previous = typeof previousJson === "string" ? deepFreeze(JSON.parse(previousJson)) : undefined;
+  delete globalThis.__previousJson;
   const stringify = JSON.stringify;
   function serializeResult(value) {
     const seen = new WeakSet();
@@ -42,6 +46,7 @@ module.exports = String.raw`
     parallel: { value: parallel },
     phase: { value: phase },
     args: { value: args },
+    previous: { value: previous },
     __workflowCheck: {
       value: Object.freeze(() => ({
         unconsumed: unconsumed.size,

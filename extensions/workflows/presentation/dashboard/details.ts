@@ -56,5 +56,9 @@ export function normalizeDetails(runId: string, value: unknown): WorkflowDetails
     transcriptArtifact:
       typeof raw.transcriptArtifact === "string" ? raw.transcriptArtifact : undefined,
     error: typeof raw.error === "string" ? raw.error : undefined,
+    incompletePhases: (Array.isArray(raw.incompletePhases) ? raw.incompletePhases : []).filter(
+      (title): title is string => typeof title === "string",
+    ),
+    resumedFrom: typeof raw.resumedFrom === "string" ? raw.resumedFrom : undefined,
   };
 }

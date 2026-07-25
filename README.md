@@ -51,7 +51,7 @@ return { blocking, fixed: blocking.length > 0 };
 
 ## DSL reference
 
-The async script receives only `phase(title)`, `agent(prompt, options)`, `parallel(thunks, options)`, and `args`. `agent()` always resolves `{ ok, output, structured?, error?, deliveryError?, deniedCommands? }`; check `ok`. A run allows 32 agent calls with global concurrency 4. Pass `background: true` to return immediately and receive a follow-up after settlement; blocking runs render throttled live progress.
+The async script receives only `phase(title)`, `agent(prompt, options)`, `parallel(thunks, options)`, `args`, and `previous`. `agent()` always resolves `{ ok, output, structured?, error?, deliveryError?, deniedCommands? }`; check `ok`. A run allows 32 agent calls with global concurrency 4. Pass `background: true` to return immediately and receive a follow-up after settlement; blocking runs render throttled live progress. Pass `resume: "wf_…"` to hand a previous run's returned value to the script as the frozen `previous` global, so redoing one failed gate does not re-pay for the phases that passed — see [docs/dsl.md](docs/dsl.md).
 
 | Option              | Meaning                                                                              |
 | ------------------- | ------------------------------------------------------------------------------------ |

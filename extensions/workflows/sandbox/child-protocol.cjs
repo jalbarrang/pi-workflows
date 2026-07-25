@@ -34,7 +34,8 @@ module.exports = function start(sendIpc) {
         message.kind === "init" &&
         typeof message.token === "string" &&
         typeof message.source === "string" &&
-        typeof message.argsJson === "string";
+        typeof message.argsJson === "string" &&
+        (message.previousJson === undefined || typeof message.previousJson === "string");
       if (!valid) {
         process.exitCode = 1;
         return;
@@ -42,7 +43,7 @@ module.exports = function start(sendIpc) {
       initialized = true;
       token = message.token;
       try {
-        Promise.resolve(run(message.source, message.argsJson, callHost))
+        Promise.resolve(run(message.source, message.argsJson, callHost, message.previousJson))
           .then((resultJson) => {
             if (typeof resultJson !== "string") {
               throw new Error("Workflow result was not serializable");

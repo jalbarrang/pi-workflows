@@ -18,6 +18,7 @@ export function buildReport(details: WorkflowDetails) {
     `- Status: ${statusWord(details.status)}`,
     `- Agents: ${done}/${details.agents.length} ok${failed ? `, ${failed} failed` : ""}`,
     `- Elapsed: ${formatElapsed(details.startedAt, details.finishedAt)}`,
+    ...(details.resumedFrom ? [`- Resumed from: ${details.resumedFrom}`] : []),
   ];
   const totals = formatUsage(aggregateUsage(details.agents));
   if (totals) lines.push(`- Usage: ${totals}`);

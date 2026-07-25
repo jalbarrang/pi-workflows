@@ -43,6 +43,7 @@ export async function prepareRun(
     startedAt: Date.now(),
     phases: [...prepared.meta.phases],
     agents: [],
+    ...(input.resume === undefined ? {} : { resumedFrom: input.resume }),
   };
   writeFileAtomic(path.join(runDir, "script.js"), input.script);
   if (input.args !== undefined) writeFileAtomic(path.join(runDir, "args.json"), input.args);

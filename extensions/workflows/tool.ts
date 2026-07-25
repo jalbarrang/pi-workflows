@@ -7,4 +7,5 @@ export const WorkflowParameters = Type.Object({
   background: Type.Optional(
     Type.Boolean({ description: WORKFLOW_PARAMETER_DESCRIPTIONS.background }),
   ),
+  resume: Type.Optional(Type.String({ description: WORKFLOW_PARAMETER_DESCRIPTIONS.resume })),
 });

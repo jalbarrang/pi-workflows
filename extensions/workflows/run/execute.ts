@@ -4,13 +4,10 @@ import type {
   ExtensionAPI,
   ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
-import { ArtifactStore } from "../artifacts/index.ts";
+import { ArtifactStore, loadPreviousResult } from "../artifacts/index.ts";
 import type { CommandPolicy } from "../policy/index.ts";
-import {
-  backgroundFollowUp,
-  backgroundLaunch,
-  buildWorkflowResultMessage,
-} from "../presentation/result-text.ts";
+import { buildWorkflowResultMessage } from "../presentation/result-text.ts";
+import { launchInBackground } from "./background.ts";
 import { SandboxRunner } from "../sandbox/index.ts";
 import { prepareWorkflowScript } from "../scripting/index.ts";
 import type { WorkflowInput } from "./input.ts";
@@ -41,6 +38,9 @@ export async function executeWorkflow(
   } catch (error) {
     throw new Error(`Workflow script failed to parse: ${errorText(error)}`);
   }
+  // Read before anything is created, like model preflight: an unreadable resume
+  // target must not leave a half-started run behind.
+  const previousJson = input.resume === undefined ? undefined : loadPreviousResult(input.resume);
   const run = await prepareRun(pi, input, prepared, signal, update, context, layer);
   const activeRun: ActiveRun = {
     get details() {
@@ -49,34 +49,17 @@ export async function executeWorkflow(
     controller: run.runtime.controller,
   };
   active.set(run.runId, activeRun);
-  const completion = settleRun(run.runtime, prepared, parseArgs(input.args), layer).finally(() => {
+  const inputs = {
+    args: parseArgs(input.args),
+    ...(previousJson === undefined ? {} : { previousJson }),
+  };
+  const completion = settleRun(run.runtime, prepared, inputs, layer).finally(() => {
     run.progress.flush();
   });
   activeRun.completion = completion;
   hooks.changed();
   if (run.background) {
-    void completion
-      .catch((error) => {
-        run.runtime.state.update((details) => {
-          details.status = "failed";
-          details.finishedAt = Date.now();
-          details.error ??= errorText(error);
-        });
-      })
-      .finally(() => {
-        const details = run.runtime.state.snapshot();
-        active.delete(run.runId);
-        hooks.settled(details.status === "running" ? "failed" : details.status);
-        hooks.changed();
-        try {
-          pi.sendUserMessage(backgroundFollowUp(details, run.runDir), { deliverAs: "followUp" });
-        } catch {}
-      });
-    const details = run.runtime.state.snapshot();
-    return {
-      content: [{ type: "text" as const, text: backgroundLaunch(details, run.runDir) }],
-      details: compactToolDetails(details),
-    };
+    return launchInBackground(pi, { ...run, completion, active, hooks });
   }
   try {
     await completion;

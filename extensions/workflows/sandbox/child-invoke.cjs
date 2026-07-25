@@ -4,7 +4,7 @@ module.exports = String.raw`
   const workflowBody = globalThis.__workflowBody;
   delete globalThis.__workflowBody;
   globalThis.__workflowPromise = Promise.resolve(
-    workflowBody(agent, parallel, phase, args),
+    workflowBody(agent, parallel, phase, args, previous),
   ).then(async (value) => {
     await Promise.resolve();
     const pending = __workflowCheck();

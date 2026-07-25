@@ -1,4 +1,4 @@
-import { safeStringify } from "../artifacts/index.ts";
+import { MAX_RESUME_BYTES, safeStringify } from "../artifacts/index.ts";
 import { byteLength } from "./helpers.ts";
 import { MAX_ARGS_BYTES, MAX_SOURCE_BYTES } from "./limits.ts";
 import { spawnSandbox } from "./spawn.ts";
@@ -17,6 +17,11 @@ export function runWorkflowSandbox(options: RunWorkflowSandboxOptions) {
   );
   if (byteLength(argsJson) > MAX_ARGS_BYTES) {
     return Promise.reject(new Error("Workflow args exceed the IPC limit"));
+  }
+  // Re-checked here even though the loader bounds it: the sandbox owns its own
+  // IPC bounds and must not trust a payload it did not measure.
+  if (options.previousJson !== undefined && byteLength(options.previousJson) > MAX_RESUME_BYTES) {
+    return Promise.reject(new Error("Workflow resume payload exceeds the IPC limit"));
   }
   return spawnSandbox(options, options.source, argsJson);
 }

@@ -1,11 +1,7 @@
-export interface SandboxAgentOptions {
-  label?: unknown;
-  phase?: unknown;
-  schema?: unknown;
-  model?: unknown;
-  provider?: unknown;
-  effort?: unknown;
-}
+import type { AgentOptionKey } from "./option-keys.ts";
+
+/** Derived from AGENT_OPTION_KEYS so the IPC payload cannot drift from the DSL. */
+export type SandboxAgentOptions = { [Key in AgentOptionKey]?: unknown };
 
 export interface SandboxAgentResult {
   ok: boolean;
@@ -17,6 +13,8 @@ export interface SandboxAgentResult {
 export interface RunWorkflowSandboxOptions {
   source: string;
   args: unknown;
+  /** A previous run's `result.json`, exposed to the script as `previous`. */
+  previousJson?: string;
   cwd: string;
   signal: AbortSignal;
   onAgent(

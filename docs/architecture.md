@@ -32,7 +32,7 @@ Three infrastructure seams are Effect services, each a `Context.Service` with a 
 
 ## Run lifecycle
 
-1. **Tool call** — `run/execute.ts` receives the input and parses the script through `scripting/`. A parse failure throws before anything is created.
+1. **Tool call** — `run/execute.ts` receives the input and parses the script through `scripting/`. A parse failure throws before anything is created, as does an unreadable `resume` target.
 2. **Preflight** — `run/prepare.ts` validates every statically declared model against the registry. An unknown model rejects the call before a run directory, an artifact, or an agent exists.
 3. **Setup** — run id, run directory, `script.js` and optional `args.json` written, an initial persist through `ArtifactStore`, then `WorkflowState`, the checkpoint scheduler, a `RunController`, and the progress emitter.
 4. **Execution** — `run/settle.ts` calls `run/script.ts`, which asks `SandboxRunner` to spawn the child. The child executes the script and calls back over IPC.

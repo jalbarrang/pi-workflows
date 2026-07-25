@@ -2,7 +2,7 @@
 
 ## Contract
 
-A script is the body of an async function. It receives four globals and returns a JSON-serializable value. It cannot import, evaluate, reach the filesystem or network, or start a process — see [security.md](security.md).
+A script is the body of an async function. It receives five globals and returns a JSON-serializable value. It cannot import, evaluate, reach the filesystem or network, or start a process — see [security.md](security.md).
 
 | Primitive                    | Contract                                                                                                               |
 | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
@@ -10,6 +10,7 @@ A script is the body of an async function. It receives four globals and returns 
 | `agent(prompt, options?)`    | Runs one isolated child agent. Always resolves `{ ok, output, structured?, error?, deliveryError?, deniedCommands? }`. |
 | `parallel(thunks, options?)` | Runs zero-argument thunks concurrently, preserving result order.                                                       |
 | `args`                       | The parsed `args` tool parameter, or `undefined`. Frozen.                                                              |
+| `previous`                   | The value returned by the run named in `resume`, or `undefined`. Frozen.                                               |
 
 `export const meta = { name, description, phases }` is optional and is read statically — never evaluated. It is removed from the executable source with line numbers preserved, so runtime stack lines still match what the model wrote.
 
@@ -64,6 +65,23 @@ Gate authoring — how to write a check a model cannot talk its way past, and wh
 ## Blocked is not the same as unneeded
 
 Every command the policy refuses is recorded and returned as `deniedCommands` on the agent result, and rendered in the tool result, the dashboard, and `report.md`. A denial reaches the child as an error tool result, so an agent is free to adapt — and adapting frequently means finishing successfully having changed nothing. In run `wf_502f35f143f6` two of three write agents returned `ok: true` after their required `git mv` was refused, and only the third said so. The log is deduplicated and capped in `agent/denied.ts`; it is a signal for the orchestrator, not an audit trail.
+
+## Re-running one phase
+
+There is no resuming a script: the sandbox holds no continuation to restore, and a failed run is re-run rather than restarted mid-flight. What a re-run needs is not a continuation but the _outputs_ of the phases that already succeeded, and those are on disk in `result.json`.
+
+Pass `resume: "wf_…"` and the script receives that run's returned value as the frozen `previous` global. A redo of one failed gate then costs one agent call instead of the whole pipeline:
+
+```js
+phase("Implement");
+const work = previous?.work ?? (await agent(implementPrompt, { label: "implement" })).output;
+phase("Review");
+const review = await agent(reviewPrompt(work), { label: "review", schema: GATE, required: true });
+if (!review.ok) return { status: "unreviewed", work, error: review.error };
+return { work, findings: review.structured };
+```
+
+The returned value has to carry forward what a re-run will need — this is the reason to return an aggregate rather than the last agent's prose. `artifacts/resume.ts` pattern-matches the run id rather than sanitizing it, bounds the file, and validates the JSON, and the load happens before the new run directory exists so an unreadable target leaves nothing half-started. The run records `resumedFrom` for provenance.
 
 ## Static preflight
 

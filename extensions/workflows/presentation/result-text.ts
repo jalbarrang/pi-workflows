@@ -16,6 +16,7 @@ export function buildWorkflowResultMessage(details: WorkflowDetails, runDir: str
       `${done}/${details.agents.length} agents ok${failed ? `, ${failed} failed` : ""} ` +
       `across ${details.phases.length} phase(s) in ${elapsed}.`,
     `Run dir: ${shortenHome(runDir)}`,
+    ...(details.resumedFrom ? [`Resumed from: ${details.resumedFrom}`] : []),
   ];
   if (details.error) lines.push(`Error: ${details.error}`);
   // Independent of the script's return value: a declared phase that produced

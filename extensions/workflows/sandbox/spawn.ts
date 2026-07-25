@@ -62,7 +62,14 @@ export function spawnSandbox(options: RunWorkflowSandboxOptions, source: string,
       }
     });
     child.on("message", (message) => handleMessage(state, message));
-    child.send({ kind: "init", token: state.token, source, argsJson }, (error) => {
+    const init = {
+      kind: "init",
+      token: state.token,
+      source,
+      argsJson,
+      ...(options.previousJson === undefined ? {} : { previousJson: options.previousJson }),
+    };
+    child.send(init, (error) => {
       if (error) state.finish(error);
     });
   });

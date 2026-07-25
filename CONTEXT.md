@@ -7,6 +7,7 @@
 - **Phase**: a named stage that groups agent calls for progress and review.
 - **Sandbox**: the isolation boundary that exposes only workflow DSL capabilities to a script.
 - **Artifact**: a bounded, durable record of a run.
+- **Resumed run**: a new run handed a previous run's returned value, so phases that already succeeded need not be re-paid for.
 - **Transcript**: a bounded projection of an agent conversation, including reasoning and tool activity.
 - **Optional phase**: a declared phase a run may legitimately never enter, reported as skipped rather than outstanding.
 - **Incomplete phase**: a declared, non-skipped phase that produced no successful agent.

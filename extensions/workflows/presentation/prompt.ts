@@ -1,6 +1,8 @@
 import { WORKFLOW_EXAMPLE_LINES } from "./prompt-example.ts";
 import { prose } from "./prompt-parts.ts";
 
+export { WORKFLOW_PROMPT_GUIDELINES } from "./prompt-guidelines.ts";
+
 export const WORKFLOW_PARAMETER_DESCRIPTIONS = {
   script: prose(
     "JavaScript workflow script. May start with `export const meta = {...}`, then use",
@@ -9,6 +11,10 @@ export const WORKFLOW_PARAMETER_DESCRIPTIONS = {
   args: "Optional JSON string exposed as `args`; valid JSON is parsed, otherwise the raw string is used.",
   background:
     "Run in the background, return a run id immediately, and deliver a follow-up when settled.",
+  resume: prose(
+    "Run id (wf_...) whose returned value is exposed to this script as the `previous` global.",
+    "Use it to redo one failed phase without re-paying for the phases that succeeded.",
+  ),
 };
 export const WORKFLOW_TOOL_DESCRIPTION = [
   prose(
@@ -42,6 +48,10 @@ export const WORKFLOW_TOOL_DESCRIPTION = [
   ),
   "• args — parsed args parameter or undefined.",
   prose(
+    "• previous — the returned value of the run named by the `resume` parameter, or undefined.",
+    "Branch on it to skip phases whose output you already have: `if (previous) { … }`.",
+  ),
+  prose(
     "Workflow JavaScript runs in a restricted, killable child with no imports, eval, timers, filesystem,",
     "network, or process APIs. A run permits 32 agent calls and has no overall deadline. Each",
     "agent must emit its first assistant event in 45 seconds. Each child tool call has an",
@@ -63,30 +73,6 @@ export const WORKFLOW_PROMPT_SNIPPET = prose(
   "Orchestrate isolated subagents from inline JavaScript with phase(), agent(), parallel(),",
   "structured outputs, and optional background execution",
 );
-export const WORKFLOW_PROMPT_GUIDELINES = [
-  "Use workflow only when the user explicitly requests a workflow or multi-agent run.",
-  prose(
-    "Use workflow for several subagents with phase dependencies or dynamic fan-out; keep one",
-    "small delegation in the parent session.",
-  ),
-  "In workflow scripts, agent() never throws; always check `.ok` before using its result.",
-  prose(
-    "A writeScope agent may relocate files with a bare `git mv` inside its fence; check",
-    "`deniedCommands` on a result that claims success but changed nothing.",
-  ),
-  prose(
-    "Mark review or verification agents `required: true` so a dead gate stops the run instead of",
-    "resolving `{ ok: false }` that a terse aggregate can read as a clean pass.",
-  ),
-  prose(
-    "Give a gate a schema field whose description demands the verbatim output of the check command,",
-    "not a boolean: a model that must paste the result cannot summarize a failure into a pass.",
-  ),
-  prose(
-    "Governed agents cannot run shell control flow, substitution, redirects, or `VAR=x` prefixes;",
-    "use `find … -exec wc -l {} +` rather than a `while read` pipeline for a line gate.",
-  ),
-];
 export const STRUCTURED_OUTPUT_SYSTEM_INSTRUCTION = prose(
   "When your task is complete, call the `structured_output` tool exactly once as your final action,",
   "with fields matching the required schema. Do not write any other text after it.",

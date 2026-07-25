@@ -69,6 +69,8 @@ export interface WorkflowDetails {
   incompletePhases?: string[];
   /** Why a `required: true` agent stopped the run. */
   requiredFailure?: string;
+  /** Run id whose result was handed to this script as `previous`. */
+  resumedFrom?: string;
 }
 
 export interface ActiveRun {

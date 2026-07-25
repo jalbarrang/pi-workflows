@@ -5,19 +5,19 @@ import type { RunRuntime } from "./runtime.ts";
 import type { PreparedWorkflowScript } from "../scripting/index.ts";
 import { incompletePhases } from "./incomplete.ts";
 import { gateStatus } from "./required-resolution.ts";
-import { runWorkflowScript } from "./script.ts";
+import { runWorkflowScript, type ScriptInputs } from "./script.ts";
 
 const errorText = (error: unknown) =>
   (error instanceof Error ? error.message : String(error)).slice(0, 16 * 1024);
 export async function settleRun(
   runtime: RunRuntime,
   prepared: PreparedWorkflowScript,
-  args: unknown,
+  inputs: ScriptInputs,
   layer: Layer.Layer<ArtifactStore | SandboxRunner>,
 ) {
   let status: "completed" | "failed" | "aborted" = "completed";
   try {
-    const result = await runWorkflowScript(runtime, prepared, args, layer);
+    const result = await runWorkflowScript(runtime, prepared, inputs, layer);
     runtime.state.update((details) => {
       details.result = result;
     });
