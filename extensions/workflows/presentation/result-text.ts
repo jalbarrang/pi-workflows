@@ -27,7 +27,10 @@ export function buildWorkflowResultMessage(details: WorkflowDetails, runDir: str
   if (details.agents.length) {
     lines.push("", "Agents:");
     for (const agent of details.agents) {
-      const state = agent.state === "done" ? "ok" : agent.state === "error" ? "FAILED" : "running";
+      // A best-effort agent that failed is not a fault to chase; naming it as one
+      // costs the reader the same attention as a real failure.
+      const failed = agent.optional ? "failed (optional)" : "FAILED";
+      const state = agent.state === "done" ? "ok" : agent.state === "error" ? failed : "running";
       const phase = agent.phase ? ` (${agent.phase})` : "";
       const note =
         agent.error ?? (agent.deliveryError && `delivery failed: ${agent.deliveryError}`);

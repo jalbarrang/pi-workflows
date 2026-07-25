@@ -12,6 +12,7 @@
 - **Optional phase**: a declared phase a run may legitimately never enter, reported as skipped rather than outstanding.
 - **Incomplete phase**: a declared, non-skipped phase that produced no successful agent.
 - **Gate**: an agent call whose failure stops the run instead of resolving a failed result.
+- **Best-effort call**: an agent call declared speculative, whose failure is not reported as a hole.
 - **Delivery failure**: a transport fault that arrives after an agent's result was already recorded; the work stands.
 - **Command policy**: the ruling on whether a governed agent may run a given shell command.
 - **Write scope**: the set of paths a scoped agent is permitted to modify.

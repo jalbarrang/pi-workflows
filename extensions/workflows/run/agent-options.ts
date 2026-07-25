@@ -2,6 +2,7 @@ import type { ThinkingLevel, WorkflowModel } from "../agent/index.ts";
 import type { AgentCallOptions } from "./input.ts";
 import { TOOL_TIMEOUT_MS } from "./limits.ts";
 import { resolveEffort, resolveModel, type ModelResolutionContext } from "./model-resolution.ts";
+import { resolveOptional } from "./optional-resolution.ts";
 import { resolveRequired } from "./required-resolution.ts";
 import { resolveToolTimeout } from "./timeout-resolution.ts";
 import { resolveAllowCommands, resolveTools, resolveWriteScope } from "./tools-resolution.ts";
@@ -15,6 +16,8 @@ export interface ResolvedAgentOptions {
   allowCommands?: readonly string[];
   /** Failure of this agent aborts the whole run instead of resolving `ok: false`. */
   required: boolean;
+  /** Failure of this agent is expected, so it never counts as an incomplete phase. */
+  optional: boolean;
   /**
    * True when bash must go through the command policy. Implied by read-only and
    * by a write scope: a path fence that bash can trivially write around is not a
@@ -50,6 +53,8 @@ export function resolveAgentOptions(
   if (allow.error) return { error: allow.error };
   const gate = resolveRequired(options);
   if (gate.error) return { error: gate.error };
+  const bestEffort = resolveOptional(options, gate.required);
+  if (bestEffort.error) return { error: bestEffort.error };
   return {
     resolved: {
       model: model.model,
@@ -58,6 +63,7 @@ export function resolveAgentOptions(
       readOnly: tools.readOnly,
       policyGoverned,
       required: gate.required,
+      optional: bestEffort.optional,
       ...(scope.writeScope ? { writeScope: scope.writeScope } : {}),
       ...(allow.allowCommands ? { allowCommands: allow.allowCommands } : {}),
     },

@@ -31,7 +31,8 @@ export function buildReport(details: WorkflowDetails) {
     lines.push("", `## ${group.title}`, "");
     if (!group.agents.length) lines.push(group.optional ? "_skipped (optional)_" : "_no agents_");
     for (const agent of group.agents) {
-      const state = agent.state === "done" ? "ok" : agent.state === "error" ? "FAILED" : "running";
+      const failed = agent.optional ? "failed (optional)" : "FAILED";
+      const state = agent.state === "done" ? "ok" : agent.state === "error" ? failed : "running";
       const stats = [
         agent.model,
         agentContext(agent),

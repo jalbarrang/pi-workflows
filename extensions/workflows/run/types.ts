@@ -40,6 +40,8 @@ export interface AgentRecord {
   deliveryError?: string;
   /** Commands the command policy refused during this agent's run. */
   deniedCommands?: string[];
+  /** Declared best-effort: this agent failing is not a hole in its phase. */
+  optional?: boolean;
   preview: string;
   usage: AgentUsage;
   transcript: TranscriptEntry[];

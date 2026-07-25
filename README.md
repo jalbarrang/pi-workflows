@@ -63,9 +63,9 @@ The async script receives only `phase(title)`, `agent(prompt, options)`, `parall
 | `tools`             | `"read-only"` removes `write`/`edit` and puts bash behind the command policy.        |
 | `allowCommands`     | Command globs a governed agent may run, e.g. `["npm run *", "dotnet *"]`.            |
 | `writeScope`        | Path globs `write`/`edit` are fenced to, e.g. `["client/**"]`.                       |
-| `required`          | Gate: this agent failing stops the run instead of resolving `ok: false`.             |
+| `required`          | Gate: failure stops the run. `optional` is its inverse: failure is not a hole.       |
 
-Declare a conditional phase as `{ title, optional: true }` so a clean run reports it as skipped rather than pending. Unknown option keys are rejected rather than ignored, so a typo such as `thinking` fails immediately instead of silently inheriting a default. Commands the policy refused come back as `deniedCommands` on the result and in the run report, so an agent that did nothing because it was blocked is distinguishable from one that had nothing to do.
+Declare a conditional phase as `{ title, optional: true }` so a clean run reports it as skipped rather than pending, and mark a speculative agent `optional: true` so a phase served only by best-effort work is not flagged as a hole (`required` and `optional` together are rejected). Unknown option keys are rejected rather than ignored, so a typo such as `thinking` fails immediately instead of silently inheriting a default. Commands the policy refused come back as `deniedCommands` on the result and in the run report, so an agent that did nothing because it was blocked is distinguishable from one that had nothing to do.
 
 ## What is actually enforced
 
@@ -91,7 +91,7 @@ Each run is checkpointed under `~/.pi/agent/workflows/<runId>/` with `script.js`
 
 ## Differences from upstream
 
-Ported from [`davis7dotsh/my-pi-setup`](https://github.com/davis7dotsh/my-pi-setup) and since extended. `toolTimeoutMs`, `tools`, `allowCommands`, `writeScope`, `required`, optional phases, unknown-key rejection, pre-run model validation, `incompletePhases`, and delivery-failure salvage are additions and are not upstream DSL.
+Ported from [`davis7dotsh/my-pi-setup`](https://github.com/davis7dotsh/my-pi-setup) and since extended. `toolTimeoutMs`, `tools`, `allowCommands`, `writeScope`, `required`, optional phases and agents, unknown-key rejection, pre-run model validation, `incompletePhases`, and delivery-failure salvage are additions and are not upstream DSL.
 
 ## Verify
 

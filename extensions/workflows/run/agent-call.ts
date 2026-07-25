@@ -44,6 +44,9 @@ export function createAgentCall(runtime: RunRuntime) {
     runtime.state.update(() => {
       record.model = resolved.model?.id;
       record.contextWindow = resolved.model?.contextWindow;
+      // Only a call that survived validation is best-effort: a misconfigured one
+      // is a real fault and must still show as a hole in its phase.
+      if (resolved.optional) record.optional = true;
     });
     runtime.persistence.checkpoint();
     runtime.emit();

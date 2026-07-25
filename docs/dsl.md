@@ -29,7 +29,7 @@ Not throwing is the right default for fan-out, where one scout dying should not 
 The failure mode this closes is real: in run `wf_e45f788c8902` a review agent's transport died, the script read `(findings && findings.blocking) || []`, and the run returned `blockingCount: 0, fixup: "skipped - no BLOCKING findings"`. Every field was true and the composite claimed a review that never happened. The terse way to consume structured output is also the unsafe way, so the engine now carries the guarantee:
 
 - `required: true` records `requiredFailure` and aborts. `run/required-resolution.ts` owns `gateStatus`, which forces the run to report `failed` — an abort would otherwise read as a cancellation, and a script that raced to its `return` would read as a completion.
-- `run/incomplete.ts` computes `incompletePhases` from agent state at settle time: declared, non-skipped phases with no successful agent. It is independent of the script's return value, so a phase that produced nothing cannot be summarized away.
+- `run/incomplete.ts` computes `incompletePhases` from agent state at settle time: declared, non-skipped phases with no successful agent, excluding phases whose every agent was declared `optional`. It is independent of the script's return value, so a phase that produced nothing cannot be summarized away.
 
 ## Work failure versus delivery failure
 
@@ -49,11 +49,11 @@ The accepted keys are owned by `sandbox/option-keys.ts`. Their runtime meaning:
 - `tools` — currently only `"read-only"`: removes `write`/`edit` and routes bash through the command policy.
 - `allowCommands` — command globs a governed agent may run. `*` matches within one argument; a trailing `*` matches the rest of the command. Only valid when the agent is governed.
 - `writeScope` — path globs `write`/`edit` are fenced to. Implies the agent is governed, because a fence bash can write around is not a fence. Also permits a bare `git mv` between two in-scope paths and a bare `mkdir` of an in-scope path; see [security.md](security.md) for the bounds. A `dir/**` glob matches `dir` itself, so a directory-level relocation needs only the one form.
-- `required` — booleans only. Marks the call a gate: any failure, including one that happens before scheduling, aborts the run. A truthy string would silently arm or disarm a gate, so it is rejected.
+- `required`, `optional` — booleans only, and mutually exclusive. `required` marks the call a gate: any failure, including one before scheduling, aborts the run. `optional` marks it best-effort: it still resolves `{ ok: false }`, but a phase served only by optional agents is never listed in `incompletePhases` and the agent renders as `failed (optional)` rather than `FAILED`. A truthy string would silently arm or disarm either, so non-booleans are rejected, and so is arming both — that is a contradiction, not a precedence question.
 
 ## Validation order
 
-`run/agent-options.ts` resolves options in a fixed order and returns on the first failure: model, effort, tool timeout, tool mode, write scope, allowed commands, required. Everything runs _before_ `RunController.schedule`, so an invalid call consumes no concurrency permit and no call budget. Unknown keys are rejected even earlier, in `run/agent-call.ts`, straight after the empty-prompt check.
+`run/agent-options.ts` resolves options in a fixed order and returns on the first failure: model, effort, tool timeout, tool mode, write scope, allowed commands, required, optional. Everything runs _before_ `RunController.schedule`, so an invalid call consumes no concurrency permit and no call budget. Unknown keys are rejected even earlier, in `run/agent-call.ts`, straight after the empty-prompt check.
 
 Two rejections exist purely to stop an option from being inert:
 
@@ -93,7 +93,7 @@ This exists because a model typo, or a model removed from `models.json` between 
 
 Phases are declarative and may be conditional. A phase declared `{ title, optional: true }` that the run never enters is reported as _skipped_ rather than pending, so a clean run does not show outstanding work that was never going to happen. A non-optional phase with no agents is hidden from the tool result and shown as empty in the dashboard, matching the original behavior.
 
-At settle time every declared, non-skipped phase with no successful agent is listed in `incompletePhases`, which reaches the tool result, `workflow.json`, and the saved report. Unphased agents are excluded: their failure is already visible in the agent list.
+At settle time every declared, non-skipped phase with no successful agent is listed in `incompletePhases`, which reaches the tool result, `workflow.json`, and the saved report. Unphased agents are excluded: their failure is already visible in the agent list. So is a phase whose every agent was `optional: true`, because a field that fires on intended outcomes stops being read. The two markers cover different holes: `optional` on a _phase_ says the phase may never be entered, which is all a conditional `if (blocking.length > 0) await agent(...)` needs; `optional` on an _agent_ says the phase was entered and the work was speculative — a second opinion, an alternate implementer tried before a fallback, a nice-to-have doc pass. A call that fails option validation is never best-effort: a misconfiguration is a real fault and still counts as a hole.
 
 ## Budgets
 
