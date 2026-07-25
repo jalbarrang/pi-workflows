@@ -41,7 +41,22 @@ test("a denied command throws the policy reason instead of executing", async () 
   const tool = createPolicyBashTool(process.cwd(), checkCommand);
   await assert.rejects(
     () => tool.execute("call-1", { command: "rm -rf /" }, undefined, undefined, undefined as never),
-    /not permitted for a read-only workflow agent/,
+    /not permitted for a governed workflow agent/,
+  );
+});
+
+test("a denial tells the agent to account for it rather than work around it", async () => {
+  const tool = createPolicyBashTool(process.cwd(), checkCommand);
+  await assert.rejects(
+    () =>
+      tool.execute(
+        "call-2",
+        { command: "find . | while read f; do wc -l $f; done" },
+        undefined,
+        undefined,
+        undefined as never,
+      ),
+    /shell control flow[\s\S]*state in your final answer that this command was denied/i,
   );
 });
 

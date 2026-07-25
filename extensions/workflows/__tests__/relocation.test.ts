@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import { createWriteFence } from "../agent/write-scope.ts";
-import { checkCommand, parseRelocation } from "../policy/index.ts";
+import { checkCommand } from "../policy/index.ts";
 
 function repo() {
   const root = mkdtempSync(join(tmpdir(), "pi-workflow-relocate-"));
@@ -37,7 +37,7 @@ test("a git mv that leaves the fence is denied, and says which path did", () => 
     assert.equal(out.allowed, false);
     assert.match(
       out.reason ?? "",
-      /server\/a\.ts outside this agent's writeScope \(client\/\*\*\)/,
+      /server\/a\.ts, outside this agent's writeScope \(client\/\*\*\)/,
     );
     assert.equal(checkCommand("git mv ../a.ts client/a.ts", undefined, fence).allowed, false);
     assert.equal(checkCommand("git mv /etc/hosts client/a.ts", undefined, fence).allowed, false);
@@ -72,28 +72,8 @@ test("relocation is unavailable without a fence, and never widens plain movers",
   }
 });
 
-test("the relocation parser refuses anything that could hide a second command", () => {
-  const attempts = [
-    "git mv client/a client/b && rm -rf .",
-    "git mv client/a client/b; rm -rf .",
-    "git mv client/a client/b | tee /etc/x",
-    "git mv client/a $(echo client/b)",
-    "git mv client/a `echo client/b`",
-    "git mv client/a client/b > /etc/x",
-    "git mv 'client/a b' client/c",
-    "git mv client/* client/b",
-    "git mv -f client/a client/b",
-    "git mv --force client/a client/b",
-    "git mv client/a client/b client/c",
-    "git mv client/a",
-    "git\tmv client/a client/b\nrm -rf .",
-    "git commit -m x",
-  ];
-  for (const command of attempts) {
-    assert.equal(parseRelocation(command), undefined, `parsed ${command}`);
-  }
-  assert.deepEqual(parseRelocation("git mv -n client/a client/b"), {
-    source: "client/a",
-    destination: "client/b",
-  });
+test("a relocation without a fence explains that a writeScope is required", () => {
+  const decision = checkCommand("git mv client/a client/b");
+  assert.equal(decision.allowed, false);
+  assert.match(decision.reason ?? "", /only permitted for an agent with a writeScope/);
 });

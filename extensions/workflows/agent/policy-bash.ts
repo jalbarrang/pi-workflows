@@ -1,10 +1,19 @@
 import { createBashToolDefinition, type ToolDefinition } from "@earendil-works/pi-coding-agent";
-import type { CommandPolicyShape, RelocationFence } from "../policy/index.ts";
+import type { CommandPolicyShape, WriteFence } from "../policy/index.ts";
+
+/**
+ * Denials are reported to the run, but the agent is the one writing the summary a
+ * human reads. Told to account for the refusal, a model reports being blocked
+ * instead of quietly working around it and claiming success.
+ */
+const ACCOUNT_FOR_DENIAL =
+  "Do not proceed as if this check passed: state in your final answer that this " +
+  "command was denied and what you could not verify or change because of it.";
 
 export interface PolicyBashOptions {
   allowCommands?: readonly string[];
-  /** Write fence that makes an in-scope `git mv` permissible. */
-  fence?: RelocationFence;
+  /** Write fence that makes an in-scope `git mv` or `mkdir` permissible. */
+  fence?: WriteFence;
   /** Called for every refused command so the run can report it. */
   onDenied?: (command: string) => void;
 }
@@ -36,7 +45,8 @@ export function createPolicyBashTool(
       const decision = check(command, options.allowCommands, options.fence);
       if (!decision.allowed) {
         options.onDenied?.(command);
-        throw new Error(decision.reason ?? "Command denied by the workflow command policy");
+        const reason = decision.reason ?? "Command denied by the workflow command policy.";
+        throw new Error(`${reason} ${ACCOUNT_FOR_DENIAL}`);
       }
       return (base as ToolDefinition).execute(toolCallId, params, signal, onUpdate, ctx);
     },

@@ -1,5 +1,6 @@
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { realpathSync } from "node:fs";
+import type { WriteFence } from "../policy/index.ts";
 
 /**
  * Canonicalize as far as the filesystem allows, then re-append the missing tail.
@@ -26,11 +27,16 @@ function canonicalize(absolute: string): string {
 }
 
 function toPattern(glob: string) {
-  const escaped = glob.replace(/[.+?^${}()|[\]\\]/g, "\\$&");
+  // `dir/**` fences a subtree, so it must also match `dir` itself. Otherwise a
+  // directory-level `git mv` is denied unless the author lists both forms — a
+  // footgun in exactly the operation the fence was added to enable.
+  const subtree = glob.length > 3 && glob.endsWith("/**");
+  const body = subtree ? glob.slice(0, -3) : glob;
+  const escaped = body.replace(/[.+?^${}()|[\]\\]/g, "\\$&");
   // Alternation order matters: `**` is consumed before a bare `*`, so the two
   // stay distinct without a placeholder substitution pass.
   const expanded = escaped.replace(/\*\*|\*/g, (match) => (match === "**" ? ".*" : "[^/]*"));
-  return new RegExp(`^${expanded}$`);
+  return new RegExp(`^${expanded}${subtree ? "(?:/.*)?" : ""}$`);
 }
 
 export function matchesWriteScope(relativePath: string, globs: readonly string[]) {
@@ -58,7 +64,7 @@ export function resolveScopedPath(cwd: string, requested: string) {
  * The policy decides commands and knows nothing about paths; this hands it the one
  * question it needs answered, with canonicalization already applied.
  */
-export function createWriteFence(cwd: string, globs: readonly string[]) {
+export function createWriteFence(cwd: string, globs: readonly string[]): WriteFence {
   return {
     inScope: (path: string) => checkWriteScope(cwd, path, globs).allowed,
     describe: () => globs.join(", "),

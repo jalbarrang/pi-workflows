@@ -78,6 +78,14 @@ export const WORKFLOW_PROMPT_GUIDELINES = [
     "Mark review or verification agents `required: true` so a dead gate stops the run instead of",
     "resolving `{ ok: false }` that a terse aggregate can read as a clean pass.",
   ),
+  prose(
+    "Give a gate a schema field whose description demands the verbatim output of the check command,",
+    "not a boolean: a model that must paste the result cannot summarize a failure into a pass.",
+  ),
+  prose(
+    "Governed agents cannot run shell control flow, substitution, redirects, or `VAR=x` prefixes;",
+    "use `find … -exec wc -l {} +` rather than a `while read` pipeline for a line gate.",
+  ),
 ];
 export const STRUCTURED_OUTPUT_SYSTEM_INSTRUCTION = prose(
   "When your task is complete, call the `structured_output` tool exactly once as your final action,",

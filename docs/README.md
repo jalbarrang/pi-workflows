@@ -6,6 +6,7 @@ Contributor and agent documentation for `@dreki-gg/pi-workflows`. User-facing us
 | ---------------------------------- | ----------------------------------------------------------------------------------------------- |
 | [architecture.md](architecture.md) | Bounded contexts, seams, service layers, and the run lifecycle end to end.                      |
 | [dsl.md](dsl.md)                   | The workflow script contract: primitives, option semantics, validation order, failure shapes.   |
+| [gates.md](gates.md)               | Writing a gate that catches work that did not happen, and what a governed agent can run.        |
 | [security.md](security.md)         | The isolation model layer by layer, and an explicit statement of what is and is not guaranteed. |
 | [testing.md](testing.md)           | Gate commands, test layout, and the rules for writing security tests.                           |
 

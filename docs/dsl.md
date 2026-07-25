@@ -47,7 +47,7 @@ The accepted keys are owned by `sandbox/option-keys.ts`. Their runtime meaning:
 - `toolTimeoutMs` — per-tool-call timeout for this agent, bounded above. Rejected rather than clamped.
 - `tools` — currently only `"read-only"`: removes `write`/`edit` and routes bash through the command policy.
 - `allowCommands` — command globs a governed agent may run. `*` matches within one argument; a trailing `*` matches the rest of the command. Only valid when the agent is governed.
-- `writeScope` — path globs `write`/`edit` are fenced to. Implies the agent is governed, because a fence bash can write around is not a fence. Also permits a bare `git mv` between two in-scope paths; see [security.md](security.md) for the bounds.
+- `writeScope` — path globs `write`/`edit` are fenced to. Implies the agent is governed, because a fence bash can write around is not a fence. Also permits a bare `git mv` between two in-scope paths and a bare `mkdir` of an in-scope path; see [security.md](security.md) for the bounds. A `dir/**` glob matches `dir` itself, so a directory-level relocation needs only the one form.
 - `required` — booleans only. Marks the call a gate: any failure, including one that happens before scheduling, aborts the run. A truthy string would silently arm or disarm a gate, so it is rejected.
 
 ## Validation order
@@ -58,6 +58,8 @@ Two rejections exist purely to stop an option from being inert:
 
 - `allowCommands` without `tools: "read-only"` or `writeScope` — bash would be unrestricted, so the patterns would do nothing.
 - `writeScope` together with `tools: "read-only"` — read-only removes `write`/`edit`, so there is nothing left to fence.
+
+Gate authoring — how to write a check a model cannot talk its way past, and what a governed agent can actually run — lives in [gates.md](gates.md).
 
 ## Blocked is not the same as unneeded
 

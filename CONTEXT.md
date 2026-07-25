@@ -15,5 +15,5 @@
 - **Command policy**: the ruling on whether a governed agent may run a given shell command.
 - **Write scope**: the set of paths a scoped agent is permitted to modify.
 - **Governed agent**: an agent call whose shell commands and file writes are subject to policy rather than instruction.
-- **Relocation**: a rename a fenced agent may perform, permitted only when both paths are inside its write scope.
+- **Fenced mutation**: a rename or directory creation a fenced agent may perform, permitted only for paths inside its write scope.
 - **Denied command**: a command the policy refused, reported on the agent result so a blocked agent is not mistaken for an idle one.
