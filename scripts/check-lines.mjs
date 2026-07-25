@@ -20,7 +20,6 @@ const roots = [
   "release-please-config.json",
   ".release-please-manifest.json",
   ".gitignore",
-  ".prettierignore",
   "pnpm-workspace.yaml",
 ];
 const files = [];

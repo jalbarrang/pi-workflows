@@ -36,7 +36,8 @@
     "format": "oxfmt --write .",
     "format:check": "oxfmt --check .",
     "test": "node --experimental-strip-types --test extensions/workflows/__tests__/*.test.ts",
-    "line-count": "node scripts/check-lines.mjs"
+    "line-count": "node scripts/check-lines.mjs",
+    "prepare": "husky"
   },
   "dependencies": {
     "@dreki-gg/pi-command-sandbox": "^0.4.2",
@@ -51,6 +52,8 @@
     "@typescript-eslint/parser": "^8.46.2",
     "bun-types": "latest",
     "eslint": "^10.7.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0",
     "oxfmt": "^0.60.0",
     "oxlint": "^1.75.0",
     "typebox": "1.3.6",
@@ -71,6 +74,14 @@
     "typebox": {
       "optional": true
     }
+  },
+  "lint-staged": {
+    "*.{js,cjs,mjs,ts}": [
+      "oxfmt --write",
+      "oxlint --deny-warnings",
+      "eslint --max-warnings=0"
+    ],
+    "*.{json,jsonc,md,mdx,yaml,yml}": "oxfmt --write"
   },
   "engines": {
     "node": ">=22.19.0"
