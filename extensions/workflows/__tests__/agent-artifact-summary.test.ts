@@ -35,15 +35,14 @@ function detailsWithFailedArtifact() {
 
 test("the settled tool result lists artifacts from a failed agent", () => {
   const message = buildWorkflowResultMessage(detailsWithFailedArtifact(), "/tmp/wf");
-  assert.match(message, new RegExp(`output: ${os.homedir()}/.*output\\.md \\(53000 bytes\\)`));
-  assert.doesNotMatch(message, /output: ~\//);
+  const outputFile = path.join(os.homedir(), ".pi/agent/workflows/wf/agents/1-sync/output.md");
+  assert.ok(message.includes(`output: ${outputFile} (53000 bytes)`));
+  assert.ok(!message.includes(`output: ~${path.sep}`));
 });
 
 test("the saved report lists artifacts from a failed agent", () => {
   const report = buildReport(detailsWithFailedArtifact());
-  assert.match(report, /output: ~\/\.pi\/agent\/workflows\/wf\/agents\/1-sync\/output\.md/);
-  assert.match(
-    report,
-    /structured: ~\/\.pi\/agent\/workflows\/wf\/agents\/1-sync\/structured\.json/,
-  );
+  const artifactRoot = ["~", ".pi", "agent", "workflows", "wf", "agents", "1-sync"].join(path.sep);
+  assert.ok(report.includes(`output: ${artifactRoot}${path.sep}output.md`));
+  assert.ok(report.includes(`structured: ${artifactRoot}${path.sep}structured.json`));
 });
