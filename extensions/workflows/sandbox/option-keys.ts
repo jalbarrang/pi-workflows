@@ -13,6 +13,7 @@ export const AGENT_OPTION_KEYS = [
   "provider",
   "effort",
   "toolTimeoutMs",
+  "maxDurationMs",
   "tools",
   "allowCommands",
   "writeScope",

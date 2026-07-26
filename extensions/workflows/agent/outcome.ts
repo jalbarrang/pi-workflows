@@ -2,6 +2,8 @@
 export interface OutcomeSignals {
   /** The run or the caller cancelled this agent. */
   aborted: boolean;
+  /** Set when this agent's own wall-clock deadline fired. */
+  durationExceededMs?: number;
   stopReason?: string;
   /** Thrown out of `session.prompt()` — typically a transport fault. */
   caught?: string;
@@ -42,6 +44,13 @@ const MISSING_STRUCTURED =
  * result from a cancelled agent is not something a script should silently trust.
  */
 export function classifyAgentOutcome(signals: OutcomeSignals): OutcomeVerdict {
+  if (signals.durationExceededMs !== undefined) {
+    return {
+      ok: false,
+      aborted: false,
+      error: `Agent exceeded maxDurationMs of ${signals.durationExceededMs} ms`,
+    };
+  }
   if (signals.aborted || signals.stopReason === "aborted") {
     return { ok: false, aborted: true, error: "Agent was aborted" };
   }

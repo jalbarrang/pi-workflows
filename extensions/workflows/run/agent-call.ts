@@ -66,6 +66,7 @@ export function createAgentCall(runtime: RunRuntime) {
             model: resolved.model,
             thinkingLevel: resolved.thinkingLevel,
             toolCallTimeoutMs: resolved.toolCallTimeoutMs,
+            maxDurationMs: resolved.maxDurationMs,
             readOnly: resolved.readOnly,
             policyGoverned: resolved.policyGoverned,
             writeScope: resolved.writeScope,

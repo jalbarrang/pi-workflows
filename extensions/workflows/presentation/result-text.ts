@@ -1,13 +1,11 @@
-import * as os from "node:os";
 import type { WorkflowDetails } from "../run/types.ts";
-import { countStates } from "../run/usage.ts";
 import { formatElapsed } from "../run/format.ts";
+import { countStates } from "../run/usage.ts";
+import { agentArtifactSummaries } from "./agent-artifacts.ts";
+import { shortenHome } from "./path.ts";
 import { resultJson } from "./result-value.ts";
 
-export const shortenHome = (value: string) => {
-  const home = os.homedir();
-  return value.startsWith(home) ? `~${value.slice(home.length)}` : value;
-};
+export { shortenHome } from "./path.ts";
 export function buildWorkflowResultMessage(details: WorkflowDetails, runDir: string) {
   const { done, failed } = countStates(details);
   const elapsed = formatElapsed(details.startedAt, details.finishedAt);
@@ -39,6 +37,7 @@ export function buildWorkflowResultMessage(details: WorkflowDetails, runDir: str
       if (agent.deniedCommands?.length) {
         lines.push(`  denied commands: ${agent.deniedCommands.join(", ")}`);
       }
+      for (const artifact of agentArtifactSummaries(agent)) lines.push(`  ${artifact}`);
     }
   }
   if (details.result !== undefined) lines.push("", "Result:", resultJson(details.result));

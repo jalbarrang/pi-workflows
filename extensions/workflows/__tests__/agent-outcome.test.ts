@@ -39,6 +39,19 @@ test("a reported assistant error is salvaged the same way as a thrown one", () =
   assert.equal(verdict.deliveryError, "stream closed");
 });
 
+test("a duration timeout is reported distinctly from an external abort", () => {
+  const verdict = classifyAgentOutcome({
+    ...base,
+    aborted: true,
+    durationExceededMs: 900_000,
+  });
+  assert.deepEqual(verdict, {
+    ok: false,
+    aborted: false,
+    error: "Agent exceeded maxDurationMs of 900000 ms",
+  });
+});
+
 test("an abort is never salvaged, even with a recorded result", () => {
   const verdict = classifyAgentOutcome({
     ...base,

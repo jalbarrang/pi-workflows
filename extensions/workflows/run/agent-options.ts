@@ -1,6 +1,7 @@
 import type { ThinkingLevel, WorkflowModel } from "../agent/index.ts";
 import { compact } from "../shared/compact.ts";
 import type { AgentCallOptions } from "./input.ts";
+import { resolveAgentDuration } from "./duration-resolution.ts";
 import { TOOL_TIMEOUT_MS } from "./limits.ts";
 import { resolveEffort, resolveModel, type ModelResolutionContext } from "./model-resolution.ts";
 import { resolveOptional } from "./optional-resolution.ts";
@@ -12,6 +13,7 @@ export interface ResolvedAgentOptions {
   model?: WorkflowModel;
   thinkingLevel: ThinkingLevel;
   toolCallTimeoutMs: number;
+  maxDurationMs?: number;
   readOnly: boolean;
   writeScope?: readonly string[];
   allowCommands?: readonly string[];
@@ -45,6 +47,8 @@ export function resolveAgentOptions(
   if (effort.error) return { error: effort.error };
   const timeout = resolveToolTimeout(options);
   if (timeout.error) return { error: timeout.error };
+  const duration = resolveAgentDuration(options);
+  if (duration.error) return { error: duration.error };
   const tools = resolveTools(options);
   if (tools.error) return { error: tools.error };
   const scope = resolveWriteScope(options, tools.readOnly);
@@ -61,6 +65,7 @@ export function resolveAgentOptions(
       model: model.model,
       thinkingLevel: effort.effort ?? inherited,
       toolCallTimeoutMs: timeout.timeoutMs ?? TOOL_TIMEOUT_MS,
+      maxDurationMs: duration.durationMs,
       readOnly: tools.readOnly,
       policyGoverned,
       required: gate.required,

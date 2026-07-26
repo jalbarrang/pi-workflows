@@ -75,6 +75,8 @@ export interface RunAgentOptions {
   onProgress?(progress: AgentProgress): void;
   toolCallTimeoutMs?: number;
   firstResponseTimeoutMs?: number;
+  /** Optional wall-clock bound for this agent's model loop. */
+  maxDurationMs?: number;
   /** Drop write/edit and route bash through `checkCommand`. */
   readOnly?: boolean;
   /** Fence write/edit to these cwd-relative globs. */

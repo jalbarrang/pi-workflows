@@ -53,7 +53,11 @@ export function resolveAllowCommands(
 ): { allowCommands?: string[]; error?: string } {
   if (options.allowCommands === undefined) return {};
   if (!governed) {
-    return { error: '`allowCommands` requires `tools: "read-only"` or `writeScope`' };
+    return {
+      error:
+        '`allowCommands` requires exactly one of `tools: "read-only"` or `writeScope` ' +
+        "(they are mutually exclusive)",
+    };
   }
   const value = options.allowCommands;
   const valid =

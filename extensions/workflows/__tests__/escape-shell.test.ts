@@ -30,6 +30,17 @@ test("PowerShell cannot be used to escape a POSIX-parsed policy", () => {
   }
 });
 
+test("ripgrep cannot execute a preprocessor or hostname command", () => {
+  for (const command of [
+    "rg --pre ./scripts/read.sh pattern .",
+    "rg --pre=./scripts/read.sh pattern .",
+    "rg --hostname-bin ./scripts/host.sh pattern .",
+    "rg --hostname-bin=./scripts/host.sh pattern .",
+  ]) {
+    assert.equal(checkCommand(command, WIDE).allowed, false, `allowed ${command}`);
+  }
+});
+
 test("interpreters that can execute arbitrary code are denied", () => {
   for (const command of [
     "node -e 'require(1)'",

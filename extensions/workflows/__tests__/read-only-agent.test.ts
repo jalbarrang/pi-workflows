@@ -62,7 +62,10 @@ test("a denial tells the agent to account for it rather than work around it", as
 
 test("tools and allowCommands are validated together", () => {
   assert.match(resolve({ tools: "write" }).error ?? "", /invalid tools "write" \(use read-only\)/);
-  assert.match(resolve({ allowCommands: ["npm *"] }).error ?? "", /requires `tools: "read-only"`/);
+  assert.match(
+    resolve({ allowCommands: ["npm *"] }).error ?? "",
+    /requires exactly one of `tools: "read-only"` or `writeScope` \(they are mutually exclusive\)/,
+  );
   assert.match(
     resolve({ tools: "read-only", allowCommands: [] }).error ?? "",
     /non-empty array of command patterns/,

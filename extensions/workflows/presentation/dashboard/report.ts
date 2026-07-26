@@ -4,6 +4,7 @@ import { formatElapsed, formatUsage } from "../../run/format.ts";
 import { phaseGroups } from "../../run/groups.ts";
 import type { WorkflowDetails } from "../../run/types.ts";
 import { aggregateUsage, countStates } from "../../run/usage.ts";
+import { agentArtifactSummaries } from "../agent-artifacts.ts";
 import { resultJson } from "../result-value.ts";
 import { shortenHome } from "../result-text.ts";
 import { agentContext, statusWord } from "../theme.ts";
@@ -47,6 +48,7 @@ export function buildReport(details: WorkflowDetails) {
       if (agent.deniedCommands?.length) {
         lines.push(`  - denied commands: ${agent.deniedCommands.join(", ")}`);
       }
+      for (const artifact of agentArtifactSummaries(agent, true)) lines.push(`  - ${artifact}`);
     }
   }
   if (details.result !== undefined) {

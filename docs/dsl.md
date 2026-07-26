@@ -46,6 +46,7 @@ The accepted keys are owned by `sandbox/option-keys.ts`. Their runtime meaning:
 - `model`, `provider` — override the session model. `provider` requires `model`. A bare `model` may be `provider/id` or a plain id resolved across providers.
 - `effort` — the thinking level. This is the DSL name for pi's internal `thinkingLevel`.
 - `toolTimeoutMs` — per-tool-call timeout for this agent, bounded above. Rejected rather than clamped.
+- `maxDurationMs` — optional wall-clock deadline for this agent's model loop, bounded above. Expiry aborts only that agent and resolves `ok: false`; a required agent then stops the run through normal gate semantics.
 - `tools` — currently only `"read-only"`: removes `write`/`edit` and routes bash through the command policy.
 - `allowCommands` — command globs a governed agent may run. `*` matches within one argument; a trailing `*` matches the rest of the command. Only valid when the agent is governed.
 - `writeScope` — path globs `write`/`edit` are fenced to. Implies the agent is governed, because a fence bash can write around is not a fence. Also permits a bare `git mv` between two in-scope paths and a bare `mkdir` of an in-scope path; see [security.md](security.md) for the bounds. A `dir/**` glob matches `dir` itself, so a directory-level relocation needs only the one form.
@@ -53,7 +54,7 @@ The accepted keys are owned by `sandbox/option-keys.ts`. Their runtime meaning:
 
 ## Validation order
 
-`run/agent-options.ts` resolves options in a fixed order and returns on the first failure: model, effort, tool timeout, tool mode, write scope, allowed commands, required, optional. Everything runs _before_ `RunController.schedule`, so an invalid call consumes no concurrency permit and no call budget. Unknown keys are rejected even earlier, in `run/agent-call.ts`, straight after the empty-prompt check.
+`run/agent-options.ts` resolves options in a fixed order and returns on the first failure: model, effort, tool timeout, agent duration, tool mode, write scope, allowed commands, required, optional. Everything runs _before_ `RunController.schedule`, so an invalid call consumes no concurrency permit and no call budget. Unknown keys are rejected even earlier, in `run/agent-call.ts`, straight after the empty-prompt check.
 
 Two rejections exist purely to stop an option from being inert:
 
@@ -85,9 +86,7 @@ The returned value has to carry forward what a re-run will need — this is the 
 
 ## Static preflight
 
-Before a run starts, `scripting/model-refs.ts` walks the AST for `agent()` calls and collects `model`/`provider` pairs that are string literals. `run/model-preflight.ts` checks each against the registry and reports every offender at once. A dynamic or computed model expression is skipped — a false "unknown model" would block a valid workflow, so the check is deliberately best-effort in one direction only.
-
-This exists because a model typo, or a model removed from `models.json` between runs, otherwise surfaces when its phase executes — potentially after many minutes of successful work.
+Before a run starts, `scripting/model-refs.ts` walks the AST for `agent()` calls and collects `model`/`provider` pairs that are string literals. `run/model-preflight.ts` checks each against the registry and reports every offender at once. A dynamic or computed model expression is skipped — a false "unknown model" would block a valid workflow, so the check is deliberately best-effort in one direction only. This exists because a model typo, or a model removed from `models.json` between runs, otherwise surfaces when its phase executes — potentially after many minutes of successful work.
 
 ## Phases
 

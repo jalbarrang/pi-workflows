@@ -23,6 +23,8 @@ export const NEVER_ALLOWED_PATTERNS: RegExp[] = [
   // Interpreter eval flags: the payload never reaches the command matcher.
   /^\s*(?:node|deno|bun)\b.*\s-(?:e|-eval|p|-print)\b/i,
   /^\s*(?:python[23]?|perl|ruby|php)\b.*\s-(?:c|e|r)\b/i,
+  // Ripgrep can execute caller-selected programs through these options.
+  /^\s*rg\b.*\s--(?:pre|hostname-bin)(?:=|\s|$)/i,
   // Fetch-and-run package launchers execute code that is not in the repo.
   /^\s*(?:npx|bunx)\b/i,
   /^\s*(?:npm|pnpm|yarn)\s+(?:exec|dlx|x)\b/i,

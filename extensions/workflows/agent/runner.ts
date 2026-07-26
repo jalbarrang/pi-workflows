@@ -2,6 +2,7 @@ import { truncateUtf8 } from "../artifacts/index.ts";
 import { compact } from "../shared/compact.ts";
 import { emptyUsage } from "../run/usage.ts";
 import { createWorkflowSession } from "./create-session.ts";
+import { createAgentDurationGuard } from "./duration.ts";
 import { observeSession } from "./observe.ts";
 import { classifyAgentOutcome } from "./outcome.ts";
 import { shutdownChildSession } from "./shutdown.ts";
@@ -31,6 +32,7 @@ export async function runAgent(options: RunAgentOptions): Promise<AgentOutcome> 
     };
   }
   const { session, structured, denied, stopGuard } = created;
+  const duration = createAgentDurationGuard(() => session.abort(), options.maxDurationMs);
   const observer = observeSession(session, options);
   let aborted = false;
   let abortPromise: Promise<void> | undefined;
@@ -48,12 +50,14 @@ export async function runAgent(options: RunAgentOptions): Promise<AgentOutcome> 
         model: session.model?.id ?? options.model?.id,
       });
       observer.setMarkResponse(watchdog.markResponse);
-      await watchdog.waitFor(session.prompt(options.prompt));
+      await duration.waitFor(watchdog.waitFor(session.prompt(options.prompt)));
     }
   } catch (cause) {
     caught = errorText(cause);
   } finally {
+    duration.cancel();
     options.signal?.removeEventListener("abort", onAbort);
+    if (duration.exceeded()) await session.abort().catch(() => {});
     if (abortPromise) await abortPromise;
     observer.unsubscribe();
     stopGuard();
@@ -79,6 +83,7 @@ export async function runAgent(options: RunAgentOptions): Promise<AgentOutcome> 
   });
   const verdict = classifyAgentOutcome({
     aborted,
+    durationExceededMs: duration.exceeded() ? options.maxDurationMs : undefined,
     stopReason: projection.stopReason,
     caught,
     projectionError: projection.error,
