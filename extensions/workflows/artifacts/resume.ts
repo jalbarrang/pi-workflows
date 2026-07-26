@@ -1,9 +1,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { getAgentDir } from "@earendil-works/pi-coding-agent";
-
-/** Run ids are `wf_` plus 12 hex characters. Anything else is not a run id. */
-const RUN_ID = /^wf_[0-9a-f]{12}$/;
+import { RUN_ID } from "./run-id.ts";
 export const MAX_RESUME_BYTES = 256 * 1024;
 
 /**

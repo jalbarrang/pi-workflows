@@ -13,3 +13,10 @@ export const CHECKPOINT_INTERVAL_MS = 500;
  */
 export const AGENT_ARTIFACT_MAX_BYTES = 8 * 1024 * 1024;
 export const AGENT_ARTIFACT_MAX_NODES = 200_000;
+/**
+ * Two-tier retention. The newest runs keep everything; middle-aged runs lose
+ * their `agents/` payloads but stay listable and resumable, because `resume`
+ * and the `/workflows` dashboard both read history; the oldest go entirely.
+ */
+export const KEEP_AGENT_ARTIFACTS = 20;
+export const KEEP_RUN_DIRECTORIES = 50;

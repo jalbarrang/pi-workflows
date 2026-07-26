@@ -7,7 +7,12 @@ import {
   type ExtensionAPI,
   type ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
-import { ArtifactStore, createWorkflowPersistence, writeFileAtomic } from "../artifacts/index.ts";
+import {
+  ArtifactStore,
+  createWorkflowPersistence,
+  sweepRunDirectories,
+  writeFileAtomic,
+} from "../artifacts/index.ts";
 import { compact } from "../shared/compact.ts";
 import { CommandPolicy } from "../policy/index.ts";
 import type { PreparedWorkflowScript } from "../scripting/index.ts";
@@ -27,12 +32,19 @@ export async function prepareRun(
   update: AgentToolUpdateCallback<WorkflowDetails> | undefined,
   context: ExtensionContext,
   layer: Layer.Layer<ArtifactStore | CommandPolicy>,
+  activeRunIds: Iterable<string> = [],
 ) {
   // Reject unknown models before any run directory, artifact, or agent exists.
   const unknownModels = preflightModels(prepared.source, context);
   if (unknownModels) throw new Error(unknownModels);
   const runId = `wf_${randomBytes(6).toString("hex")}`;
-  const runDir = path.join(getAgentDir(), "workflows", runId);
+  const workflowsDir = path.join(getAgentDir(), "workflows");
+  // Swept here, before this run writes anything: a sweep racing a live run's
+  // atomic writes would corrupt the run that is currently being paid for. Every
+  // active run is protected, because a background run can outlive the one that
+  // triggers the sweep.
+  sweepRunDirectories(workflowsDir, { protect: activeRunIds });
+  const runDir = path.join(workflowsDir, runId);
   const background = !!input.background && context.hasUI;
   const details: WorkflowDetails = compact({
     runId,

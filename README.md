@@ -79,7 +79,7 @@ Declare a conditional phase as `{ title, optional: true }` so a clean run report
 
 ## Artifacts
 
-Each run is checkpointed under `~/.pi/agent/workflows/<runId>/` with `script.js`, optional `args.json`, `workflow.json`, `result.json`, and `transcripts.json`. Writes are bounded and atomic. Transcripts include assistant thinking, tool calls/results, and execution timings within fixed size limits. Every agent also gets `agents/<index>-<label>/output.md` and, with a schema, `structured.json` — written the moment the agent finishes, so an answer survives a run that dies afterwards, and bounded far more loosely than every other channel because nothing forwards them. They are what `outputFile` and `structuredFile` point at.
+Each run is checkpointed under `~/.pi/agent/workflows/<runId>/` with `script.js`, optional `args.json`, `workflow.json`, `result.json`, and `transcripts.json`. Writes are bounded and atomic. Transcripts include assistant thinking, tool calls/results, and execution timings within fixed size limits. Every agent also gets `agents/<index>-<label>/output.md` and, with a schema, `structured.json` — written the moment the agent finishes, so an answer survives a run that dies afterwards, and bounded far more loosely than every other channel because nothing forwards them. They are what `outputFile` and `structuredFile` point at. Old runs are pruned at the start of each new run: the newest 20 keep their payloads, runs 21-50 keep only metadata so they stay listable and resumable, and older ones are removed.
 
 ## Notes and caveats
 

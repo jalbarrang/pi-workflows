@@ -42,7 +42,7 @@ export async function executeWorkflow(
   // Read before anything is created, like model preflight: an unreadable resume
   // target must not leave a half-started run behind.
   const previousJson = input.resume === undefined ? undefined : loadPreviousResult(input.resume);
-  const run = await prepareRun(pi, input, prepared, signal, update, context, layer);
+  const run = await prepareRun(pi, input, prepared, signal, update, context, layer, active.keys());
   const activeRun: ActiveRun = {
     get details() {
       return run.runtime.state.snapshot();
