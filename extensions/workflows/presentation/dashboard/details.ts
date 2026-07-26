@@ -1,3 +1,4 @@
+import { compact } from "../../shared/compact.ts";
 import type { WorkflowDetails } from "../../run/types.ts";
 import { normalizeAgent } from "./normalize.ts";
 
@@ -19,11 +20,11 @@ export function normalizeDetails(runId: string, value: unknown): WorkflowDetails
     const phase = value as Record<string, unknown>;
     if (typeof phase.title !== "string") return [];
     return [
-      {
+      compact({
         title: phase.title,
-        ...(typeof phase.detail === "string" ? { detail: phase.detail } : {}),
-        ...(phase.optional === true ? { optional: true } : {}),
-      },
+        detail: typeof phase.detail === "string" ? phase.detail : undefined,
+        optional: phase.optional === true ? true : undefined,
+      }),
     ];
   });
   const status = ["running", "failed", "aborted"].includes(String(raw.status))

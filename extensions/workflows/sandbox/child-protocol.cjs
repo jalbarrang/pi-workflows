@@ -24,7 +24,9 @@ module.exports = function start(sendIpc) {
     }
     return new Promise((resolve, reject) => {
       pendingAgents.set(id, { resolve, reject });
-      send({ kind: "agent", payloadJson });
+      // The id rides in the envelope as well as the payload so an oversized payload
+      // stays attributable to one call, and can be refused without killing the run.
+      send({ kind: "agent", id, payloadJson });
     });
   };
   process.on("message", (message) => {

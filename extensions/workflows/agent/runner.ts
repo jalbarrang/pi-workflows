@@ -1,4 +1,5 @@
 import { truncateUtf8 } from "../artifacts/index.ts";
+import { compact } from "../shared/compact.ts";
 import { emptyUsage } from "../run/usage.ts";
 import { createWorkflowSession } from "./create-session.ts";
 import { observeSession } from "./observe.ts";
@@ -9,7 +10,8 @@ import type { AgentOutcome, RunAgentOptions } from "./types.ts";
 import { finalOutput } from "./usage.ts";
 import { createFirstResponseWatchdog } from "./watchdog.ts";
 
-const OUTPUT_MAX_BYTES = 64 * 1024;
+/** Inline cap on the output string carried back over IPC. The on-disk artifact is not capped to this. */
+export const OUTPUT_MAX_BYTES = 64 * 1024;
 const errorText = (cause: unknown) =>
   (cause instanceof Error ? cause.message : String(cause)).slice(0, 16 * 1024);
 export async function runAgent(options: RunAgentOptions): Promise<AgentOutcome> {
@@ -57,18 +59,24 @@ export async function runAgent(options: RunAgentOptions): Promise<AgentOutcome> 
     stopGuard();
   }
   const projection = observer.projection();
-  const output = truncateUtf8(finalOutput(session.messages), OUTPUT_MAX_BYTES);
+  // Persisted before truncation and before teardown: this is the only point where
+  // the whole answer exists, and teardown is where runs have died with it.
+  const full = finalOutput(session.messages);
+  const artifacts = options.persistOutput?.({ output: full, structured: structured() });
+  const output = truncateUtf8(full, OUTPUT_MAX_BYTES);
   const transcript = transcriptFromMessages(session.messages, observer.timings);
   await shutdownChildSession(session);
   const deniedCommands = denied();
-  const base = {
+  const base = compact({
     output,
-    ...(deniedCommands.length > 0 ? { deniedCommands } : {}),
+    ...artifacts,
+    outputTruncated: output === full ? undefined : true,
+    deniedCommands: deniedCommands.length > 0 ? deniedCommands : undefined,
     usage: projection.usage,
     model: projection.model,
     contextWindow: projection.contextWindow,
     transcript,
-  };
+  });
   const verdict = classifyAgentOutcome({
     aborted,
     stopReason: projection.stopReason,

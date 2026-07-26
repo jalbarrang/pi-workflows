@@ -3,6 +3,7 @@ import { test } from "node:test";
 import { buildReport } from "../presentation/dashboard/report.ts";
 import { buildWorkflowResultMessage } from "../presentation/result-text.ts";
 import { resolveAgentOptions } from "../run/agent-options.ts";
+import { compact } from "../shared/compact.ts";
 import { incompletePhases } from "../run/incomplete.ts";
 import type { AgentRecord, AgentState } from "../run/types.ts";
 import { workflowDetails } from "./fixtures.ts";
@@ -12,7 +13,7 @@ const resolve = (options: Record<string, unknown>) =>
   resolveAgentOptions(options, context as never, "high");
 
 function agent(label: string, phase: string, state: AgentState, optional?: boolean): AgentRecord {
-  return {
+  return compact({
     index: 1,
     label,
     phase,
@@ -21,8 +22,8 @@ function agent(label: string, phase: string, state: AgentState, optional?: boole
     preview: "",
     usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, cost: 0, turns: 0 },
     transcript: [],
-    ...(optional === undefined ? {} : { optional }),
-  };
+    optional,
+  });
 }
 
 test("optional accepts booleans only", () => {

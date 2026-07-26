@@ -1,3 +1,4 @@
+import { compact } from "../shared/compact.ts";
 import type { AgentRecord, WorkflowDetails } from "./types.ts";
 
 export interface PhaseGroup {
@@ -21,11 +22,13 @@ export function phaseGroups(details: WorkflowDetails, includeEmpty = false): Pha
   for (const phase of details.phases) {
     const agents = pending.get(phase.title);
     if (agents || includeEmpty) {
-      groups.push({
-        title: phase.title,
-        agents: agents ?? [],
-        ...(phase.optional === true ? { optional: true } : {}),
-      });
+      groups.push(
+        compact({
+          title: phase.title,
+          agents: agents ?? [],
+          optional: phase.optional === true ? true : undefined,
+        }),
+      );
     }
     pending.delete(phase.title);
   }

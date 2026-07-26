@@ -1,29 +1,50 @@
 import { toSerializable } from "../artifacts/index.ts";
-import { byteLength, errorText, isRecord, sanitizeOptions } from "./helpers.ts";
-import { MAX_AGENT_MESSAGE_BYTES, MAX_AGENT_REQUESTS, MAX_PROMPT_CHARS } from "./limits.ts";
+import { compact } from "../shared/compact.ts";
+import { checkAgentRequest } from "./agent-request.ts";
+import { byteLength, errorText, sanitizeOptions } from "./helpers.ts";
+import { MAX_AGENT_MESSAGE_BYTES, MAX_AGENT_REQUESTS } from "./limits.ts";
 import type { SandboxState } from "./state.ts";
 import type { SandboxAgentResult } from "./types.ts";
 
-export function handleAgentMessage(state: SandboxState, rawJson: unknown) {
-  if (typeof rawJson !== "string" || byteLength(rawJson) > MAX_AGENT_MESSAGE_BYTES) {
-    return state.finish(new Error("Workflow sandbox sent an oversized agent request"));
+function send(state: SandboxState, id: number, result: SandboxAgentResult) {
+  if (state.finished || !state.child.connected) return;
+  const normalized = toSerializable(result, {
+    maxDepth: 16,
+    maxNodes: 10_000,
+    maxStringBytes: 128 * 1024,
+  });
+  let resultJson = JSON.stringify(normalized);
+  if (byteLength(resultJson) > MAX_AGENT_MESSAGE_BYTES) {
+    resultJson = JSON.stringify(
+      compact({
+        ok: false,
+        output: "",
+        error: "Agent result exceeded the workflow IPC output limit",
+        outputFile: result.outputFile,
+      }),
+    );
   }
-  let payload: unknown;
-  try {
-    payload = JSON.parse(rawJson);
-  } catch {
-    return state.finish(new Error("Workflow sandbox sent malformed agent JSON"));
+  state.child.send({ token: state.token, kind: "agentResult", id, resultJson });
+}
+
+/**
+ * Route one agent request from the sandbox.
+ *
+ * An author error in a single `agent()` call must not kill the run. Run
+ * `wf_2cf06cc43747` lost four completed recon agents because an oversized
+ * synthesis prompt was treated as a protocol violation: the sandbox was torn
+ * down, the script never reached its `return`, and no result was ever written.
+ * Only a request that cannot be attributed to a call is fatal now.
+ */
+export function handleAgentMessage(state: SandboxState, id: unknown, rawJson: unknown) {
+  const checked = checkAgentRequest(id, rawJson);
+  if (checked.kind === "fatal") return state.finish(new Error(checked.error));
+  if (checked.kind === "reject") {
+    // Deliberately charged to neither the request budget nor the id set: nothing
+    // ran, and a rejected call must not consume a slot a real agent could use.
+    return send(state, checked.id, { ok: false, output: "", error: checked.error });
   }
-  const valid =
-    isRecord(payload) &&
-    Number.isSafeInteger(payload.id) &&
-    typeof payload.id === "number" &&
-    payload.id > 0 &&
-    typeof payload.prompt === "string" &&
-    payload.prompt.length <= MAX_PROMPT_CHARS &&
-    isRecord(payload.options);
-  if (!valid) return state.finish(new Error("Workflow sandbox sent an invalid agent request"));
-  const request = payload as { id: number; prompt: string; options: Record<string, unknown> };
+  const request = checked.request;
   if (state.requestIds.has(request.id) || ++state.requestCount > MAX_AGENT_REQUESTS) {
     return state.finish(new Error("Workflow sandbox exceeded its agent request budget"));
   }
@@ -31,21 +52,8 @@ export function handleAgentMessage(state: SandboxState, rawJson: unknown) {
   const controller = new AbortController();
   state.active.set(request.id, controller);
   const sendResult = (result: SandboxAgentResult) => {
-    if (!state.active.delete(request.id) || state.finished || !state.child.connected) return;
-    const normalized = toSerializable(result, {
-      maxDepth: 16,
-      maxNodes: 10_000,
-      maxStringBytes: 128 * 1024,
-    });
-    let resultJson = JSON.stringify(normalized);
-    if (byteLength(resultJson) > MAX_AGENT_MESSAGE_BYTES) {
-      resultJson = JSON.stringify({
-        ok: false,
-        output: "",
-        error: "Agent result exceeded the workflow IPC output limit",
-      });
-    }
-    state.child.send({ token: state.token, kind: "agentResult", id: request.id, resultJson });
+    if (!state.active.delete(request.id)) return;
+    send(state, request.id, result);
   };
   const sanitized = sanitizeOptions(request.options);
   void state.options

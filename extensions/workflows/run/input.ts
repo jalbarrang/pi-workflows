@@ -23,6 +23,19 @@ export interface ScriptAgentResult {
    * that had nothing to do from one that was blocked from doing it.
    */
   deniedCommands?: string[];
+  /**
+   * Absolute path to this agent's full output on disk. `output` is capped for the
+   * IPC channel; this file is not. Hand the path to the next agent and tell it to
+   * `read` the file rather than interpolating `output` into its prompt — a large
+   * interpolated output is what overflows the prompt limit.
+   */
+  outputFile?: string;
+  /** Absolute path to the validated structured payload, when a schema was used. */
+  structuredFile?: string;
+  /** Size of the file at `outputFile`, which may exceed `output.length`. */
+  outputBytes?: number;
+  /** True when `output` was cut and `outputFile` holds strictly more than it. */
+  outputTruncated?: boolean;
 }
 
 /**

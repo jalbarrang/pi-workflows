@@ -36,6 +36,7 @@ Run `pnpm format` before `pnpm format:check`, and run lint before format:check s
 - **Effect stays exactly pinned.** No caret on `effect`. v4 is beta and has renamed core APIs mid-beta; a range would break the build silently.
 - **`agent()` never throws into a workflow script.** Every failure resolves as `{ ok: false, error }`. Scripts branch on `ok`. Breaking this breaks every script ever written against the DSL.
 - **Validate before scheduling.** All `agent()` option validation happens in `run/agent-options.ts` before `RunController.schedule`, so a misconfiguration costs neither a concurrency permit nor a unit of the 32-call budget.
+- **No conditional spread in an object literal.** `...(x === undefined ? {} : { x })` is banned by `no-restricted-syntax` in `eslint.config.js` because it is unreadable at four optional fields. Write the literal flat and wrap it in `shared/compact.ts`, which drops `undefined` values. Do **not** replace it with a plain `x: value` assignment on anything that gets persisted or sent over IPC: `artifacts/normalize.ts` maps a present-but-`undefined` value to the string `"[undefined]"`, so an omitted key and a key set to `undefined` produce different artifacts.
 - **Never silently ignore an option.** Unknown keys, out-of-range values, and options that would be inert in the current mode are all rejected with a message naming the valid set. This is the single most-repeated request from real use.
 - **Sandbox bounds are security properties, not tuning knobs.** Byte caps, request counts, the IPC token, the capability stripping, and `--permission` are load-bearing. Do not relax one to make a test pass; report the blocker instead.
 - **Services cross seams as Effect `Context.Service` + `static layer`.** `SandboxRunner`, `ArtifactStore`, `CommandPolicy`. Merge in `run/services.ts`, resolve at a boundary (`run/prepare.ts`, `run/script.ts`), then pass plain functions inward. Domain code never imports a layer.
@@ -53,6 +54,7 @@ extensions/workflows/
 ├── run/            → run aggregate, scheduling, option resolution, settle, progress
 ├── artifacts/      → bounded serialization, atomic writes, checkpoints
 ├── policy/         → command allow/deny decisions
+├── shared/         → cross-context primitives with no domain knowledge (compact)
 ├── presentation/   → prompts, tool renderers, /workflows dashboard, status indicator
 └── __tests__/      → mirrors the tree; excluded from the published tarball
 docs/               → architecture, dsl, security, testing (start at docs/README.md)

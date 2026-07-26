@@ -1,6 +1,6 @@
 export { classifyAgentOutcome } from "./outcome.ts";
 export { createWorkflowResources } from "./resources.ts";
-export { runAgent } from "./runner.ts";
+export { OUTPUT_MAX_BYTES, runAgent } from "./runner.ts";
 export {
   guardWorkflowChildTools,
   runWithToolCallTimeout,
@@ -12,6 +12,8 @@ export { createFirstResponseWatchdog } from "./watchdog.ts";
 export type { OutcomeSignals, OutcomeVerdict } from "./outcome.ts";
 export type {
   AgentOutcome,
+  AgentOutputArtifacts,
+  PersistAgentOutput,
   RunAgentOptions,
   ThinkingLevel,
   ToolExecutionTiming,

@@ -1,5 +1,7 @@
 import { createWorkflowResources, runAgent } from "../agent/index.ts";
 import { unknownOptionKeyError } from "../sandbox/index.ts";
+import { compact } from "../shared/compact.ts";
+import { createOutputPersister } from "./agent-artifacts.ts";
 import { abortForFailedGate, applyAgentOutcome } from "./agent-outcome.ts";
 import { createAgentRecord, failRecord } from "./agent-record.ts";
 import { resolveAgentOptions } from "./agent-options.ts";
@@ -57,34 +59,37 @@ export function createAgentCall(runtime: RunRuntime) {
           options.schema === undefined ? "plain" : "structured",
           runtime.context.isProjectTrusted(),
         );
-        const outcome = await runAgent({
-          prompt,
-          schema: options.schema,
-          model: resolved.model,
-          thinkingLevel: resolved.thinkingLevel,
-          toolCallTimeoutMs: resolved.toolCallTimeoutMs,
-          readOnly: resolved.readOnly,
-          policyGoverned: resolved.policyGoverned,
-          ...(resolved.writeScope ? { writeScope: resolved.writeScope } : {}),
-          ...(resolved.allowCommands ? { allowCommands: resolved.allowCommands } : {}),
-          checkCommand: runtime.checkCommand,
-          cwd: runtime.context.cwd,
-          loader: resources.loader,
-          settingsManager: resources.settingsManager,
-          modelRegistry: runtime.context.modelRegistry,
-          signal,
-          onProgress(progress) {
-            runtime.state.update(() => {
-              record.preview = progress.preview.slice(0, PREVIEW_LENGTH);
-              record.usage = progress.usage;
-              record.model = progress.model ?? record.model;
-              record.contextWindow = progress.contextWindow ?? record.contextWindow;
-              record.transcript = progress.transcript;
-            });
-            runtime.persistence.checkpoint();
-            runtime.emit();
-          },
-        });
+        const outcome = await runAgent(
+          compact({
+            prompt,
+            schema: options.schema,
+            model: resolved.model,
+            thinkingLevel: resolved.thinkingLevel,
+            toolCallTimeoutMs: resolved.toolCallTimeoutMs,
+            readOnly: resolved.readOnly,
+            policyGoverned: resolved.policyGoverned,
+            writeScope: resolved.writeScope,
+            allowCommands: resolved.allowCommands,
+            checkCommand: runtime.checkCommand,
+            persistOutput: createOutputPersister(runtime.runDir, record),
+            cwd: runtime.context.cwd,
+            loader: resources.loader,
+            settingsManager: resources.settingsManager,
+            modelRegistry: runtime.context.modelRegistry,
+            signal,
+            onProgress(progress) {
+              runtime.state.update(() => {
+                record.preview = progress.preview.slice(0, PREVIEW_LENGTH);
+                record.usage = progress.usage;
+                record.model = progress.model ?? record.model;
+                record.contextWindow = progress.contextWindow ?? record.contextWindow;
+                record.transcript = progress.transcript;
+              });
+              runtime.persistence.checkpoint();
+              runtime.emit();
+            },
+          }),
+        );
         return applyAgentOutcome(runtime, record, outcome, resolved.required);
       }, invocation)
       .catch((error) => fail(errorText(error)));

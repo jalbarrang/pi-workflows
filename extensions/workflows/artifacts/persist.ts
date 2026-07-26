@@ -1,5 +1,6 @@
 import * as path from "node:path";
 import type { WorkflowDetails } from "../run/types.ts";
+import { compact } from "../shared/compact.ts";
 import { writeFileAtomic } from "./atomic.ts";
 import { safeStringify } from "./stringify.ts";
 import { boundedArtifactTranscript } from "./transcript.ts";
@@ -20,13 +21,13 @@ export function persistWorkflowJson(runDir: string, details: WorkflowDetails) {
   if (details.result !== undefined) {
     writeRunFile(runDir, "result.json", safeStringify(details.result, { maxBytes: 1024 * 1024 }));
   }
-  const compact: WorkflowDetails = {
+  const stored = details.result !== undefined;
+  const summary: WorkflowDetails = compact({
     ...details,
-    ...(details.result === undefined
-      ? {}
-      : { result: "[stored in result.json]", resultArtifact: "result.json" }),
+    result: stored ? "[stored in result.json]" : undefined,
+    resultArtifact: stored ? "result.json" : undefined,
     transcriptArtifact: "transcripts.json",
     agents: details.agents.map((agent) => ({ ...agent, transcript: [] })),
-  };
-  writeRunFile(runDir, "workflow.json", safeStringify(compact, { maxBytes: 1024 * 1024 }));
+  });
+  writeRunFile(runDir, "workflow.json", safeStringify(summary, { maxBytes: 1024 * 1024 }));
 }

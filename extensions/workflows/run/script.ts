@@ -1,6 +1,7 @@
 import { Effect, type Layer } from "effect";
 import { SandboxRunner } from "../sandbox/index.ts";
 import type { PreparedWorkflowScript } from "../scripting/index.ts";
+import { compact } from "../shared/compact.ts";
 import { createAgentCall } from "./agent-call.ts";
 import type { RunRuntime } from "./runtime.ts";
 
@@ -20,9 +21,9 @@ export async function runWorkflowScript(
   const program = Effect.gen(function* () {
     const sandbox = yield* SandboxRunner;
     return yield* sandbox.run({
+      ...compact({ previousJson: inputs.previousJson }),
       source: prepared.source,
       args: inputs.args,
-      ...(inputs.previousJson === undefined ? {} : { previousJson: inputs.previousJson }),
       cwd: runtime.context.cwd,
       signal: runtime.controller.signal,
       onAgent,

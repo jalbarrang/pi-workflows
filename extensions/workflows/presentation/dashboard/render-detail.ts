@@ -2,6 +2,7 @@ import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 import { formatElapsed, formatUsage } from "../../run/format.ts";
 import { isSkippedPhase, phaseGroups } from "../../run/groups.ts";
 import { countStates } from "../../run/usage.ts";
+import { shortenHome } from "../result-text.ts";
 import { agentContext, stateSquare, statusColor, statusWord } from "../theme.ts";
 import type { DashboardState } from "./state.ts";
 import { selectionWindow } from "./window.ts";
@@ -58,6 +59,9 @@ export function renderDetail(state: DashboardState, width: number, height: numbe
       ...(agent.deniedCommands?.length
         ? [`    ${theme.fg("dim", `denied: ${agent.deniedCommands.join(", ")}`)}`]
         : []),
+      // The full answer, including one the run then lost. Worth a line even for
+      // an agent that failed: the words it produced are still on disk.
+      ...(agent.outputFile ? [`    ${theme.fg("dim", shortenHome(agent.outputFile))}`] : []),
     ];
   });
   for (let index = 0; index < paneHeight; index++) {

@@ -1,4 +1,5 @@
 import type { ToolDefinition } from "@earendil-works/pi-coding-agent";
+import { compact } from "../shared/compact.ts";
 import { createPolicyBashTool } from "./policy-bash.ts";
 import { createScopedWriteTools } from "./scoped-tools.ts";
 import { makeStructuredOutputTool } from "./structured.ts";
@@ -30,11 +31,15 @@ export function buildChildCustomTools(
   const fenced = options.writeScope && !options.readOnly ? options.writeScope : undefined;
   if (governed && options.checkCommand) {
     tools.push(
-      createPolicyBashTool(options.cwd, options.checkCommand, {
-        ...(options.allowCommands ? { allowCommands: options.allowCommands } : {}),
-        ...(fenced ? { fence: createWriteFence(options.cwd, fenced) } : {}),
-        ...(hooks.denied ? { onDenied: hooks.denied } : {}),
-      }),
+      createPolicyBashTool(
+        options.cwd,
+        options.checkCommand,
+        compact({
+          allowCommands: options.allowCommands,
+          fence: fenced ? createWriteFence(options.cwd, fenced) : undefined,
+          onDenied: hooks.denied,
+        }),
+      ),
     );
   }
   if (fenced) tools.push(...createScopedWriteTools(options.cwd, fenced));

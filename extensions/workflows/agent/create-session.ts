@@ -3,6 +3,7 @@ import {
   SessionManager,
   type AgentSession,
 } from "@earendil-works/pi-coding-agent";
+import { compact } from "../shared/compact.ts";
 import { buildChildCustomTools } from "./child-tools.ts";
 import { createDeniedCommandLog } from "./denied.ts";
 import { childToolPolicy } from "./policy.ts";
@@ -26,13 +27,15 @@ export async function createWorkflowSession(options: RunAgentOptions): Promise<C
   let session: AgentSession | undefined;
   try {
     ({ session } = await createAgentSession({
-      cwd: options.cwd,
-      ...(options.model ? { model: options.model } : {}),
-      ...(options.thinkingLevel ? { thinkingLevel: options.thinkingLevel } : {}),
-      resourceLoader: options.loader,
-      settingsManager: options.settingsManager,
-      sessionManager: SessionManager.inMemory(options.cwd),
-      ...(customTools.length > 0 ? { customTools } : {}),
+      ...compact({
+        cwd: options.cwd,
+        model: options.model,
+        thinkingLevel: options.thinkingLevel,
+        resourceLoader: options.loader,
+        settingsManager: options.settingsManager,
+        sessionManager: SessionManager.inMemory(options.cwd),
+        customTools: customTools.length > 0 ? customTools : undefined,
+      }),
       ...childToolPolicy(options.readOnly === true),
     }));
     await session.bindExtensions({ mode: "print" });

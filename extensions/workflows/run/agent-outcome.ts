@@ -1,4 +1,6 @@
 import type { AgentOutcome } from "../agent/index.ts";
+import { compact } from "../shared/compact.ts";
+import { artifactFields } from "./agent-artifacts.ts";
 import type { ScriptAgentResult } from "./input.ts";
 import { PREVIEW_LENGTH } from "./limits.ts";
 import type { RunRuntime } from "./runtime.ts";
@@ -29,7 +31,11 @@ export function applyAgentOutcome(
   outcome: AgentOutcome,
   required: boolean,
 ): ScriptAgentResult {
+  const artifacts = artifactFields(outcome);
   runtime.state.update(() => {
+    record.outputFile = artifacts.outputFile;
+    record.structuredFile = artifacts.structuredFile;
+    record.outputBytes = artifacts.outputBytes;
     record.usage = outcome.usage;
     record.model = outcome.model ?? record.model;
     record.contextWindow = outcome.contextWindow ?? record.contextWindow;
@@ -46,12 +52,13 @@ export function applyAgentOutcome(
   if (!outcome.ok && required) {
     abortForFailedGate(runtime, record, outcome.error ?? "Agent failed");
   }
-  return {
+  return compact({
     ok: outcome.ok,
     output: outcome.output,
-    ...(outcome.structured === undefined ? {} : { structured: outcome.structured }),
-    ...(outcome.error === undefined ? {} : { error: outcome.error }),
-    ...(outcome.deliveryError === undefined ? {} : { deliveryError: outcome.deliveryError }),
-    ...(outcome.deniedCommands === undefined ? {} : { deniedCommands: outcome.deniedCommands }),
-  };
+    ...artifacts,
+    structured: outcome.structured,
+    error: outcome.error,
+    deliveryError: outcome.deliveryError,
+    deniedCommands: outcome.deniedCommands,
+  });
 }

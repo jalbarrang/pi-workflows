@@ -4,6 +4,7 @@ Contributor and agent documentation for `@dreki-gg/pi-workflows`. User-facing us
 
 | Document                           | Owns                                                                                            |
 | ---------------------------------- | ----------------------------------------------------------------------------------------------- |
+| [agent-output.md](agent-output.md) | Per-agent output artifacts, and why a prompt never carries a previous agent's text.             |
 | [architecture.md](architecture.md) | Bounded contexts, seams, service layers, and the run lifecycle end to end.                      |
 | [dsl.md](dsl.md)                   | The workflow script contract: primitives, option semantics, validation order, failure shapes.   |
 | [gates.md](gates.md)               | Writing a gate that catches work that did not happen, and what a governed agent can run.        |

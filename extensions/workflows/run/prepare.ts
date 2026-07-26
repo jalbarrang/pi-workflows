@@ -8,6 +8,7 @@ import {
   type ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
 import { ArtifactStore, createWorkflowPersistence, writeFileAtomic } from "../artifacts/index.ts";
+import { compact } from "../shared/compact.ts";
 import { CommandPolicy } from "../policy/index.ts";
 import type { PreparedWorkflowScript } from "../scripting/index.ts";
 import { RunController } from "./controller.ts";
@@ -33,7 +34,7 @@ export async function prepareRun(
   const runId = `wf_${randomBytes(6).toString("hex")}`;
   const runDir = path.join(getAgentDir(), "workflows", runId);
   const background = !!input.background && context.hasUI;
-  const details: WorkflowDetails = {
+  const details: WorkflowDetails = compact({
     runId,
     sessionId: context.sessionManager.getSessionId(),
     name: prepared.meta.name,
@@ -43,8 +44,8 @@ export async function prepareRun(
     startedAt: Date.now(),
     phases: [...prepared.meta.phases],
     agents: [],
-    ...(input.resume === undefined ? {} : { resumedFrom: input.resume }),
-  };
+    resumedFrom: input.resume,
+  });
   writeFileAtomic(path.join(runDir, "script.js"), input.script);
   if (input.args !== undefined) writeFileAtomic(path.join(runDir, "args.json"), input.args);
   const services = await Effect.runPromise(
@@ -69,6 +70,7 @@ export async function prepareRun(
     controller,
     state,
     persistence,
+    runDir,
     checkCommand: services.policy.check,
     emit: progress.emit,
   };

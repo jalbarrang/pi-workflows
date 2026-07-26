@@ -4,21 +4,21 @@
 
 A script is the body of an async function. It receives five globals and returns a JSON-serializable value. It cannot import, evaluate, reach the filesystem or network, or start a process — see [security.md](security.md).
 
-| Primitive                    | Contract                                                                                                               |
-| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `phase(title)`               | Marks the current phase for progress display. An undeclared title is appended to the phase list.                       |
-| `agent(prompt, options?)`    | Runs one isolated child agent. Always resolves `{ ok, output, structured?, error?, deliveryError?, deniedCommands? }`. |
-| `parallel(thunks, options?)` | Runs zero-argument thunks concurrently, preserving result order.                                                       |
-| `args`                       | The parsed `args` tool parameter, or `undefined`. Frozen.                                                              |
-| `previous`                   | The value returned by the run named in `resume`, or `undefined`. Frozen.                                               |
+| Primitive                    | Contract                                                                                                                                                                           |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `phase(title)`               | Marks the current phase for progress display. An undeclared title is appended to the phase list.                                                                                   |
+| `agent(prompt, options?)`    | Runs one isolated child agent. Always resolves `{ ok, output, outputFile, outputBytes, outputTruncated?, structured?, structuredFile?, error?, deliveryError?, deniedCommands? }`. |
+| `parallel(thunks, options?)` | Runs zero-argument thunks concurrently, preserving result order.                                                                                                                   |
+| `args`                       | The parsed `args` tool parameter, or `undefined`. Frozen.                                                                                                                          |
+| `previous`                   | The value returned by the run named in `resume`, or `undefined`. Frozen.                                                                                                           |
+
+Never interpolate one agent's output into the next agent's prompt — that is what overflows the prompt limit. Every result carries `outputFile`, an absolute path to the full answer on disk; pass the path and tell the next agent to read it. See [agent-output.md](agent-output.md).
 
 `export const meta = { name, description, phases }` is optional and is read statically — never evaluated. It is removed from the executable source with line numbers preserved, so runtime stack lines still match what the model wrote.
 
 ## `agent()` never throws
 
-Every failure mode resolves as `{ ok: false, error }`: an invalid option, an unknown model, a provider error, an abort, a missing structured result, even an internal fault. Scripts therefore branch on `ok` instead of using `try`/`catch`, which keeps model-authored code simple. This is a hard contract — do not introduce a rejection path.
-
-The one exception is the _run_: if the script itself throws, or the sandbox protocol is violated, the whole run fails and the tool call throws.
+Every failure mode resolves as `{ ok: false, error }`: an invalid option, an unknown model, a provider error, an abort, a missing structured result, even an internal fault. Scripts therefore branch on `ok` instead of using `try`/`catch`, which keeps model-authored code simple. This is a hard contract — do not introduce a rejection path. The one exception is the _run_: if the script itself throws, or the sandbox protocol is violated, the whole run fails and the tool call throws.
 
 `required: true` does not change this contract. It stops the _run_ — the failure is recorded, the run is aborted, and the sandbox is killed — so the script is never handed a rejection.
 

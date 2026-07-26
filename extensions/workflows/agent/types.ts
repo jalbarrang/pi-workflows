@@ -16,9 +16,33 @@ export interface ToolExecutionTiming {
   finishedAt?: number;
   durationMs?: number;
 }
+/**
+ * Persist an agent's answer at full fidelity and report where it landed.
+ *
+ * Injected rather than imported so the agent layer stays ignorant of run
+ * directories: it holds the only copy of the untruncated output, and this is the
+ * one call it makes with it.
+ */
+export type PersistAgentOutput = (payload: {
+  output: string;
+  structured?: unknown;
+}) => AgentOutputArtifacts | undefined;
+
+export interface AgentOutputArtifacts {
+  outputFile: string;
+  structuredFile?: string;
+  outputBytes: number;
+}
+
 export interface AgentOutcome {
   ok: boolean;
+  /** Capped at OUTPUT_MAX_BYTES. `outputFile` holds the whole answer. */
   output: string;
+  outputFile?: string;
+  structuredFile?: string;
+  outputBytes?: number;
+  /** True when `output` was cut, so a reader knows the file holds strictly more. */
+  outputTruncated?: boolean;
   structured?: unknown;
   error?: string;
   /** Transport fault that arrived after the result was already recorded. */
@@ -61,4 +85,6 @@ export interface RunAgentOptions {
   allowCommands?: readonly string[];
   /** Command policy decision function, resolved from the CommandPolicy layer. */
   checkCommand?: CommandPolicyShape["check"];
+  /** Write the untruncated answer to disk. Absent in tests that do not care. */
+  persistOutput?: PersistAgentOutput;
 }

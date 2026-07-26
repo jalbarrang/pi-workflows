@@ -10,6 +10,8 @@ export interface RunRuntime {
   controller: RunController;
   state: WorkflowState;
   persistence: ReturnType<typeof createWorkflowPersistence>;
+  /** This run's artifact directory. Agent outputs are written under it as they land. */
+  runDir: string;
   /** Resolved from the CommandPolicy layer so agent calls stay layer-agnostic. */
   checkCommand: CommandPolicyShape["check"];
   emit(): void;

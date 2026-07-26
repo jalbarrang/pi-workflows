@@ -31,6 +31,7 @@ export function normalizeAgent(
 ): AgentRecord | undefined {
   if (!value || typeof value !== "object") return undefined;
   const agent = value as Record<string, unknown>;
+  const usage = typeof agent.usage === "object" && agent.usage !== null ? agent.usage : {};
   const state =
     agent.state === "error" || agent.state === "failed"
       ? "error"
@@ -54,7 +55,9 @@ export function normalizeAgent(
     error:
       typeof agent.error === "string" && agent.error !== "[undefined]" ? agent.error : undefined,
     preview: typeof agent.preview === "string" ? agent.preview : "",
-    usage: { ...emptyUsage(), ...(typeof agent.usage === "object" ? agent.usage : {}) },
+    outputFile: typeof agent.outputFile === "string" ? agent.outputFile : undefined,
+    structuredFile: typeof agent.structuredFile === "string" ? agent.structuredFile : undefined,
+    usage: { ...emptyUsage(), ...usage },
     transcript: normalizeTranscript(agent.transcript),
   };
 }

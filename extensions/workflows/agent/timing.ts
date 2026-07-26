@@ -1,5 +1,6 @@
 import type { AgentSessionEvent } from "@earendil-works/pi-coding-agent";
 import { truncateUtf8 } from "../artifacts/index.ts";
+import { compact } from "../shared/compact.ts";
 import type { ToolExecutionTiming } from "./types.ts";
 
 type TimingEvent = Extract<
@@ -20,11 +21,7 @@ export function recordToolExecutionTiming(
   if (previous?.finishedAt !== undefined) return;
   const durationMs =
     previous?.startedAt === undefined ? undefined : Math.max(0, observedAt - previous.startedAt);
-  timings.set(event.toolCallId, {
-    ...previous,
-    finishedAt: observedAt,
-    ...(durationMs === undefined ? {} : { durationMs }),
-  });
+  timings.set(event.toolCallId, compact({ ...previous, finishedAt: observedAt, durationMs }));
 }
 
 export function toolMetadata(
@@ -32,10 +29,10 @@ export function toolMetadata(
   timings: ReadonlyMap<string, ToolExecutionTiming>,
 ) {
   const timing = timings.get(toolCallId);
-  return {
+  return compact({
     toolCallId: truncateUtf8(toolCallId, 1_024),
-    ...(timing?.startedAt === undefined ? {} : { startedAt: timing.startedAt }),
-    ...(timing?.finishedAt === undefined ? {} : { finishedAt: timing.finishedAt }),
-    ...(timing?.durationMs === undefined ? {} : { durationMs: timing.durationMs }),
-  };
+    startedAt: timing?.startedAt,
+    finishedAt: timing?.finishedAt,
+    durationMs: timing?.durationMs,
+  });
 }

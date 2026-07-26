@@ -5,6 +5,7 @@ import type {
   ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
 import { ArtifactStore, loadPreviousResult } from "../artifacts/index.ts";
+import { compact } from "../shared/compact.ts";
 import type { CommandPolicy } from "../policy/index.ts";
 import { buildWorkflowResultMessage } from "../presentation/result-text.ts";
 import { launchInBackground } from "./background.ts";
@@ -49,10 +50,7 @@ export async function executeWorkflow(
     controller: run.runtime.controller,
   };
   active.set(run.runId, activeRun);
-  const inputs = {
-    args: parseArgs(input.args),
-    ...(previousJson === undefined ? {} : { previousJson }),
-  };
+  const inputs = compact({ args: parseArgs(input.args), previousJson });
   const completion = settleRun(run.runtime, prepared, inputs, layer).finally(() => {
     run.progress.flush();
   });

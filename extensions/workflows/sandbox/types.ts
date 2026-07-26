@@ -8,6 +8,14 @@ export interface SandboxAgentResult {
   output: string;
   structured?: unknown;
   error?: string;
+  /**
+   * Path to the agent's full output. It outlives every cap on this message, so it
+   * is preserved even in the fallback sent when the result itself is too large.
+   */
+  outputFile?: string;
+  structuredFile?: string;
+  outputBytes?: number;
+  outputTruncated?: boolean;
 }
 
 export interface RunWorkflowSandboxOptions {

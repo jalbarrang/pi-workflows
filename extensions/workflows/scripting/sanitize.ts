@@ -1,3 +1,4 @@
+import { compact } from "../shared/compact.ts";
 import type { WorkflowMeta } from "./types.ts";
 
 export function emptyMeta(): WorkflowMeta {
@@ -13,20 +14,18 @@ export function sanitizeMeta(value: unknown): WorkflowMeta {
         const phase = item as Record<string, unknown>;
         if (typeof phase.title !== "string" || !phase.title.trim()) return [];
         return [
-          {
+          compact({
             title: phase.title.slice(0, 160),
-            ...(typeof phase.detail === "string" ? { detail: phase.detail.slice(0, 2_000) } : {}),
+            detail: typeof phase.detail === "string" ? phase.detail.slice(0, 2_000) : undefined,
             // Literal `true` only: fail closed on anything truthy-but-not-boolean.
-            ...(phase.optional === true ? { optional: true } : {}),
-          },
+            optional: phase.optional === true ? true : undefined,
+          }),
         ];
       })
     : [];
-  return {
-    ...(typeof raw.name === "string" ? { name: raw.name.slice(0, 160) } : {}),
-    ...(typeof raw.description === "string"
-      ? { description: raw.description.slice(0, 2_000) }
-      : {}),
+  return compact({
+    name: typeof raw.name === "string" ? raw.name.slice(0, 160) : undefined,
+    description: typeof raw.description === "string" ? raw.description.slice(0, 2_000) : undefined,
     phases,
-  };
+  });
 }

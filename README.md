@@ -51,7 +51,7 @@ return { blocking, fixed: blocking.length > 0 };
 
 ## DSL reference
 
-The async script receives only `phase(title)`, `agent(prompt, options)`, `parallel(thunks, options)`, `args`, and `previous`. `agent()` always resolves `{ ok, output, structured?, error?, deliveryError?, deniedCommands? }`; check `ok`. A run allows 32 agent calls with global concurrency 4. Pass `background: true` to return immediately and receive a follow-up after settlement; blocking runs render throttled live progress. Pass `resume: "wf_…"` to hand a previous run's returned value to the script as the frozen `previous` global, so redoing one failed gate does not re-pay for the phases that passed — see [docs/dsl.md](docs/dsl.md).
+The async script receives only `phase(title)`, `agent(prompt, options)`, `parallel(thunks, options)`, `args`, and `previous`. `agent()` always resolves `{ ok, output, outputFile, structured?, structuredFile?, error?, deliveryError?, deniedCommands? }`; check `ok`. `output` is capped for the IPC channel, `outputFile` is the whole answer on disk — hand the path to the next agent rather than interpolating the text into its prompt. A run allows 32 agent calls with global concurrency 4. Pass `background: true` to return immediately and receive a follow-up after settlement; blocking runs render throttled live progress. Pass `resume: "wf_…"` to hand a previous run's returned value to the script as the frozen `previous` global, so redoing one failed gate does not re-pay for the phases that passed — see [docs/dsl.md](docs/dsl.md).
 
 | Option              | Meaning                                                                              |
 | ------------------- | ------------------------------------------------------------------------------------ |
@@ -79,7 +79,7 @@ Declare a conditional phase as `{ title, optional: true }` so a clean run report
 
 ## Artifacts
 
-Each run is checkpointed under `~/.pi/agent/workflows/<runId>/` with `script.js`, optional `args.json`, `workflow.json`, `result.json`, and `transcripts.json`. Writes are bounded and atomic. Transcripts include assistant thinking, tool calls/results, and execution timings within fixed size limits.
+Each run is checkpointed under `~/.pi/agent/workflows/<runId>/` with `script.js`, optional `args.json`, `workflow.json`, `result.json`, and `transcripts.json`. Writes are bounded and atomic. Transcripts include assistant thinking, tool calls/results, and execution timings within fixed size limits. Every agent also gets `agents/<index>-<label>/output.md` and, with a schema, `structured.json` — written the moment the agent finishes, so an answer survives a run that dies afterwards, and bounded far more loosely than every other channel because nothing forwards them. They are what `outputFile` and `structuredFile` point at.
 
 ## Notes and caveats
 

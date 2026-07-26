@@ -34,7 +34,7 @@ export function handleMessage(state: SandboxState, raw: unknown) {
     return state.finish(new Error("Workflow sandbox sent an invalid IPC message"));
   }
   if (raw.kind === "phase") return handlePhase(state, raw);
-  if (raw.kind === "agent") return handleAgentMessage(state, raw.payloadJson);
+  if (raw.kind === "agent") return handleAgentMessage(state, raw.id, raw.payloadJson);
   if (raw.kind === "result") return handleResult(state, raw);
   if (raw.kind === "error" && typeof raw.error === "string") {
     return state.finish(new Error(raw.error.slice(0, 16 * 1024)));

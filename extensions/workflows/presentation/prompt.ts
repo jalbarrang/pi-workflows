@@ -34,7 +34,7 @@ export const WORKFLOW_TOOL_DESCRIPTION = [
   prose(
     "• await agent(prompt, { label?, phase?, schema?, model?, provider?, effort?, required?,",
     "optional? }) — run",
-    "one isolated subagent. It always resolves { ok, output, structured?, error?, deniedCommands? };",
+    "one isolated subagent. It always resolves { ok, output, outputFile, structured?, error?, deniedCommands? };",
     "check ok before",
     "reading structured, never after. A JSON",
     "schema returns a validated object in structured after a terminating structured_output call.",
@@ -61,6 +61,12 @@ export const WORKFLOW_TOOL_DESCRIPTION = [
     "independent 3-minute guard, becomes an error tool result on timeout, and leaves the agent",
     "loop free to recover. Use map/filter/if/await/template strings and return a JSON-serializable",
     "aggregate.",
+  ),
+  prose(
+    "Never interpolate one agent's output into the next agent's prompt: a large output overflows",
+    "the 100k-character prompt limit and that call fails. Every result carries outputFile, an",
+    "absolute path to the agent's full untruncated answer (and structuredFile for its schema",
+    "payload). Pass the path and instruct the next agent to read that file.",
   ),
   prose(
     "Use schema whenever later steps branch on a result so they consume typed fields, not prose.",

@@ -1,4 +1,5 @@
 import type { ThinkingLevel, WorkflowModel } from "../agent/index.ts";
+import { compact } from "../shared/compact.ts";
 import type { AgentCallOptions } from "./input.ts";
 import { TOOL_TIMEOUT_MS } from "./limits.ts";
 import { resolveEffort, resolveModel, type ModelResolutionContext } from "./model-resolution.ts";
@@ -56,7 +57,7 @@ export function resolveAgentOptions(
   const bestEffort = resolveOptional(options, gate.required);
   if (bestEffort.error) return { error: bestEffort.error };
   return {
-    resolved: {
+    resolved: compact({
       model: model.model,
       thinkingLevel: effort.effort ?? inherited,
       toolCallTimeoutMs: timeout.timeoutMs ?? TOOL_TIMEOUT_MS,
@@ -64,8 +65,8 @@ export function resolveAgentOptions(
       policyGoverned,
       required: gate.required,
       optional: bestEffort.optional,
-      ...(scope.writeScope ? { writeScope: scope.writeScope } : {}),
-      ...(allow.allowCommands ? { allowCommands: allow.allowCommands } : {}),
-    },
+      writeScope: scope.writeScope,
+      allowCommands: allow.allowCommands,
+    }),
   };
 }

@@ -43,6 +43,13 @@ export interface AgentRecord {
   /** Declared best-effort: this agent failing is not a hole in its phase. */
   optional?: boolean;
   preview: string;
+  /**
+   * Absolute path to this agent's full output, written the moment the outcome
+   * lands so it survives a script crash, a dead sandbox, or an abort.
+   */
+  outputFile?: string;
+  structuredFile?: string;
+  outputBytes?: number;
   usage: AgentUsage;
   transcript: TranscriptEntry[];
 }

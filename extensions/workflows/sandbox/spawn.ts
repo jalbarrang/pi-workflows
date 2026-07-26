@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
+import { compact } from "../shared/compact.ts";
 import { buildChildEnv } from "./child-env.ts";
 import { terminateChild } from "./terminate.ts";
 import { handleMessage } from "./messages.ts";
@@ -62,13 +63,13 @@ export function spawnSandbox(options: RunWorkflowSandboxOptions, source: string,
       }
     });
     child.on("message", (message) => handleMessage(state, message));
-    const init = {
+    const init = compact({
       kind: "init",
       token: state.token,
       source,
       argsJson,
-      ...(options.previousJson === undefined ? {} : { previousJson: options.previousJson }),
-    };
+      previousJson: options.previousJson,
+    });
     child.send(init, (error) => {
       if (error) state.finish(error);
     });
