@@ -1,5 +1,11 @@
 {
   "$schema": "https://oxc.rs/schema/oxfmt.json",
   "printWidth": 100,
-  "proseWrap": "preserve"
+  "proseWrap": "preserve",
+  "ignorePatterns": [
+    ".release-please-manifest.json",
+    "CHANGELOG.md",
+    "docs/research/**",
+    "pnpm-lock.yaml"
+  ]
 }
