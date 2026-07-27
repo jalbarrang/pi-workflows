@@ -1,4 +1,5 @@
 export const CHILD_EXCLUDED_TOOL_NAMES = [
+  "subagent",
   "subagent_spawn",
   "subagent_wait",
   "subagent_cancel",

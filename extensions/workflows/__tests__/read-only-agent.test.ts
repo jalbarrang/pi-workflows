@@ -22,6 +22,7 @@ test("read-only excludes write and edit but never excludes bash", () => {
 test("the default tool policy is unchanged by the read-only feature", () => {
   const base = childToolPolicy().excludeTools;
   assert.deepEqual(base, [
+    "subagent",
     "subagent_spawn",
     "subagent_wait",
     "subagent_cancel",

@@ -20,7 +20,11 @@ Every message carries a per-run random token; a message without it kills the run
 
 ## Layer 4 — child agents are constrained
 
-Child sessions get normal built-ins and trust-appropriate project resources, but recursive orchestration and user-prompting tools are denied so a workflow cannot spawn workflows or block waiting for a human. Every tool call is wrapped with an independent timeout, including tools registered later by extensions. A timeout becomes an error tool result, leaving the agent free to recover.
+Child sessions get normal built-ins and trust-appropriate project resources. The SDK policy denies recursive orchestration and user-prompting tools.
+
+The policy excludes the exact `workflow` and `subagent` tool names. It also excludes the compatibility `subagent_*` names. A process with `PI_AGENT_LEAF=1` registers no workflow tool or command.
+
+Every tool call has an independent timeout, including tools that extensions register later. A timeout becomes an error tool result, and the agent can recover.
 
 ## Layer 5 — governed agents
 

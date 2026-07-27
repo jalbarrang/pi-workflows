@@ -13,8 +13,11 @@ import {
 import { renderWorkflowCall } from "./presentation/render-call.ts";
 import { renderWorkflowResult } from "./presentation/render-result.ts";
 import { WorkflowParameters } from "./tool.ts";
+import { isAgentLeafEnvironment } from "./agent-leaf.ts";
 
 export default function workflows(pi: ExtensionAPI) {
+  if (isAgentLeafEnvironment()) return;
+
   const active = new Map<string, ActiveRun>();
   const indicator = createIndicator(active);
   registerLifecycle(pi, active, indicator.attach, indicator.clear);

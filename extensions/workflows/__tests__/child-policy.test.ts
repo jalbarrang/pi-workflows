@@ -6,6 +6,7 @@ test("workflow children deny recursive orchestration and user input tools", () =
   assert.deepEqual(
     [...CHILD_EXCLUDED_TOOL_NAMES],
     [
+      "subagent",
       "subagent_spawn",
       "subagent_wait",
       "subagent_cancel",
