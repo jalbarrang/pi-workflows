@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/jalbarrang/pi-workflows/compare/v0.2.0...v0.2.1) (2026-07-27)
+
+
+### Bug Fixes
+
+* keep workflow child agents leaf-only ([370e640](https://github.com/jalbarrang/pi-workflows/commit/370e640cb93f2c232cc9591820804cd4157d2759))
+
 ## [0.2.0](https://github.com/jalbarrang/pi-workflows/compare/v0.1.0...v0.2.0) (2026-07-26)
 
 
