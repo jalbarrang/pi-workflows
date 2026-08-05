@@ -6,14 +6,13 @@ A pi package that gives the model one `workflow` tool: it writes a JavaScript or
 
 ## Stack
 
-| Area               | Tech                                                 |
-| ------------------ | ---------------------------------------------------- |
-| Language           | TypeScript, ESM, no build (jiti loads source)        |
-| Effects / services | Effect v4, pinned exactly to `4.0.0-beta.101`        |
-| Script parsing     | acorn (static only — the AST is never evaluated)     |
-| Command policy     | `@dreki-gg/pi-command-sandbox` (POSIX shell parsing) |
-| Tests              | `node --test` with `--experimental-strip-types`      |
-| Format / lint      | oxfmt, oxlint, ESLint (line limit only)              |
+| Area               | Tech                                             |
+| ------------------ | ------------------------------------------------ |
+| Language           | TypeScript, ESM, no build (jiti loads source)    |
+| Effects / services | Effect v4, pinned exactly to `4.0.0-beta.101`    |
+| Script parsing     | acorn (static only — the AST is never evaluated) |
+| Tests              | `node --test` with `--experimental-strip-types`  |
+| Format / lint      | oxfmt, oxlint, ESLint (line limit only)          |
 
 ## Commands
 
@@ -37,11 +36,11 @@ Run `pnpm format` before `pnpm format:check`, and run lint before format:check s
 - **`agent()` never throws into a workflow script.** Every failure resolves as `{ ok: false, error }`. Scripts branch on `ok`. Breaking this breaks every script ever written against the DSL.
 - **Validate before scheduling.** All `agent()` option validation happens in `run/agent-options.ts` before `RunController.schedule`, so a misconfiguration costs neither a concurrency permit nor a unit of the 32-call budget.
 - **No conditional spread in an object literal.** `...(x === undefined ? {} : { x })` is banned by `no-restricted-syntax` in `eslint.config.js` because it is unreadable at four optional fields. Write the literal flat and wrap it in `shared/compact.ts`, which drops `undefined` values. Do **not** replace it with a plain `x: value` assignment on anything that gets persisted or sent over IPC: `artifacts/normalize.ts` maps a present-but-`undefined` value to the string `"[undefined]"`, so an omitted key and a key set to `undefined` produce different artifacts.
-- **Never silently ignore an option.** Unknown keys, out-of-range values, and options that would be inert in the current mode are all rejected with a message naming the valid set. This is the single most-repeated request from real use.
+- **Never silently ignore an option.** Unknown keys and out-of-range values are rejected with a message naming the valid set. This is the single most-repeated request from real use.
 - **Sandbox bounds are security properties, not tuning knobs.** Byte caps, request counts, the IPC token, the capability stripping, and `--permission` are load-bearing. Do not relax one to make a test pass; report the blocker instead.
-- **Services cross seams as Effect `Context.Service` + `static layer`.** `SandboxRunner`, `ArtifactStore`, `CommandPolicy`. Merge in `run/services.ts`, resolve at a boundary (`run/prepare.ts`, `run/script.ts`), then pass plain functions inward. Domain code never imports a layer.
+- **Services cross seams as Effect `Context.Service` + `static layer`.** `SandboxRunner` and `ArtifactStore` merge in `run/services.ts` and resolve at `run/prepare.ts` or `run/script.ts`. Domain code never imports a layer.
 - **`CONTEXT.md` is a glossary only.** No implementation detail. `README.md` owns user-facing docs; `docs/` owns contributor and agent docs; `docs/research/` is an as-found upstream record and is not maintained as truth.
-- **Tests prove, they do not assert.** Security tests attempt real escapes. If one succeeds, that is a finding — fix the code, never soften the assertion.
+- **Tests prove, they do not assert.** Script-sandbox tests attempt real escapes. If one succeeds, that is a finding — fix the code, never soften the assertion.
 
 ## Key paths
 
@@ -50,10 +49,9 @@ extensions/workflows/
 ├── index.ts        → composition root: registers the tool + command, builds the layer
 ├── scripting/      → parse, fail-closed meta extraction, static model refs (pure, no IO)
 ├── sandbox/        → child process, authenticated IPC, DSL option registry, *.cjs worker
-├── agent/          → child sessions, tool policy, structured output, watchdog, transcripts
+├── agent/          → child sessions, recursive-tool exclusion, structured output, watchdog, transcripts
 ├── run/            → run aggregate, scheduling, option resolution, settle, progress
 ├── artifacts/      → bounded serialization, atomic writes, checkpoints
-├── policy/         → command allow/deny decisions
 ├── shared/         → cross-context primitives with no domain knowledge (compact)
 ├── presentation/   → prompts, tool renderers, /workflows dashboard, status indicator
 └── __tests__/      → mirrors the tree; excluded from the published tarball
@@ -62,11 +60,8 @@ docs/               → architecture, dsl, security, testing (start at docs/READ
 
 ## Gotchas
 
-- **Overriding a built-in tool: never also exclude its name.** pi seeds built-ins into the registry then lets `customTools` overwrite by name, but it filters custom tools through the same allow/exclude check — so excluding `bash` deletes your override too. See `agent/policy-bash.ts`.
 - **`assert.deepEqual` narrows its argument** (`asserts actual is T`). Any property access after it is a type error. Put negative assertions before it.
 - **`child_process.spawn` reports failure asynchronously** via an `error` event, not a throw. A `try/catch` around `spawn` catches nothing; an unhandled `error` takes down the host.
-- **`allowCommands` only widens.** It feeds `extraSafe`, so a pattern like `node *` also permits `node -e '<anything>'`. Hardening must go in `policy/deny.ts` (`extraDestructive`), which is evaluated first and cannot be widened.
 - **A LIFO AST worklist yields reverse source order.** Sort collected nodes by `start` before reporting, or errors list call sites backwards.
 - **oxlint exits 0 on warnings** unless `--deny-warnings` is passed. It is in the `lint` script; keep it there.
-- **Node's permission model follows symlinks out of granted paths.** Never rely on `--allow-fs-*` for path scoping; `agent/write-scope.ts` canonicalizes instead.
 - **Windows spells PATH as `Path`** and needs `SystemRoot`. A hardcoded `PATH` key gives the child an empty search path. `sandbox/child-env.ts` owns this.

@@ -8,9 +8,6 @@ importers:
 
   .:
     dependencies:
-      '@dreki-gg/pi-command-sandbox':
-        specifier: ^0.4.2
-        version: 0.4.2
       acorn:
         specifier: ^8.17.0
         version: 8.17.0
@@ -169,9 +166,6 @@ packages:
   '@babel/runtime@7.29.7':
     resolution: {integrity: sha512-Nq8OhGWiZIZGV6hLHoyAKLLcJihP/xFeBMGJoUrxTX2psI8dCifzLhZISFb+VWS3wFMRDmCGw5R+dOySCqPLhw==}
     engines: {node: '>=6.9.0'}
-
-  '@dreki-gg/pi-command-sandbox@0.4.2':
-    resolution: {integrity: sha512-N3C9Ue68A3HIEKP+LJ4faeBtVhfAzN0jV/uh/ylqT1NElN7p/nDlQZf6/DzaliWSpNc8Cebx7FudnhP33C+0Ug==}
 
   '@earendil-works/pi-agent-core@0.82.0':
     resolution: {integrity: sha512-bnS9DpOKK5T/F/gQkaOnYdMsuuciWiScfAHHWC+k5OQ0HxjSqMFQvp8keurULLoT4+v8NHv4V14pNvd4hsfC0Q==}
@@ -1259,10 +1253,6 @@ packages:
     resolution: {integrity: sha512-7++dFhtcx3353uBaq8DDR4NuxBetBzC7ZQOhmTQInHEd6bSrXdiEyzCvG07Z44UYdLShWUyXt5M/yhz8ekcb1A==}
     engines: {node: '>=8'}
 
-  shell-quote@1.10.0:
-    resolution: {integrity: sha512-w1aiOKwKuRgtwAReIIj89puqg+I7GvX4IbLrvmhXbzQsj1+Zwi4VO3+fa6ZF91TWSjIxoEkKnMeHcLEODK5ZXA==}
-    engines: {node: '>= 0.4'}
-
   signal-exit@3.0.7:
     resolution: {integrity: sha512-wnD2ZE+l+SPC/uoS0vXeE9L1+0wuaMqKlfz9AMUo38JsyLSBWSFcHR1Rri62LZc12vLr1gb3jl7iwQhgwpAbGQ==}
 
@@ -1620,10 +1610,6 @@ snapshots:
   '@aws/lambda-invoke-store@0.3.0': {}
 
   '@babel/runtime@7.29.7': {}
-
-  '@dreki-gg/pi-command-sandbox@0.4.2':
-    dependencies:
-      shell-quote: 1.10.0
 
   '@earendil-works/pi-agent-core@0.82.0(ws@8.21.1)(zod@4.4.3)':
     dependencies:
@@ -2634,8 +2620,6 @@ snapshots:
       shebang-regex: 3.0.0
 
   shebang-regex@3.0.0: {}
-
-  shell-quote@1.10.0: {}
 
   signal-exit@3.0.7: {}
 

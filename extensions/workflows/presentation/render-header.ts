@@ -18,7 +18,6 @@ export function renderHeader(details: WorkflowDetails, theme: Theme) {
     ) +
     theme.fg(color, statusWord(details.status));
   if (failed) text += theme.fg("error", ` · ${failed} failed`);
-  if (details.background) text += theme.fg("dim", " (background)");
   if (details.status === "running" && details.currentPhase) {
     text += theme.fg("muted", ` · ${details.currentPhase}`);
   }

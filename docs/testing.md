@@ -10,21 +10,21 @@ pnpm format && pnpm typecheck && pnpm lint && pnpm line-count && pnpm test && np
 
 Order matters in two places. Run `pnpm format` before `pnpm format:check` so formatting is applied rather than merely reported, and run `pnpm lint` before `format:check` so code cannot be compressed onto fewer lines to satisfy the line gate.
 
-Tests run under `node --test` with `--experimental-strip-types`, so TypeScript executes directly with no build. Several suites spawn real child processes; that is intentional and is why the permission-mode paths are actually covered rather than mocked.
+Tests run under `node --test` with `--experimental-strip-types`, so TypeScript executes directly with no build. Several suites spawn real child processes so the workflow-script permission boundary is tested instead of mocked.
 
 ## Layout
 
 `extensions/workflows/__tests__/` mirrors the source tree and is excluded from the published tarball by the `files` whitelist in `package.json`. One concern per file, each under the same 100-line limit as source. Shared setup lives in the `*-fixture.ts` files rather than being re-declared.
 
-Suites group by what they protect: option and resolution behavior, the run controller's budget and cancellation semantics, artifact bounding and atomicity, agent timing and transcript projection, service-layer wiring, the sandbox protocol, and the escape attempts.
+Suites group by what they protect: option and resolution behavior, the run controller's budget and cancellation semantics, artifact bounding and atomicity, agent timing and transcript projection, service-layer wiring, and the sandbox protocol.
 
 ## Writing tests for security behavior
 
-The escape suites (`escape-shell`, `escape-scope`, `sandbox-*`) exist to _prove_ guarantees, not to describe them. Two rules:
+The `sandbox-*` suites exist to _prove_ the workflow-script boundary, not only to describe it. Two rules:
 
-**A passing escape is a finding.** If an attempt that should be denied succeeds, fix the code and report it. Never relax the assertion, widen the fixture, or narrow the attempted input to make the suite green — that converts a live vulnerability into a documented lie. This has already happened once in this repo: patterns like `node *` and `sh *` were granting arbitrary execution, and the suite is the only reason it was caught before release.
+**A passing escape is a finding.** If an orchestration script reaches a forbidden host capability, fix the code and report it. Never weaken the assertion to make the suite green.
 
-**Assert the negative and the positive.** Every hardening change needs a companion check that legitimate work still passes. When the command deny list was added, the same change verified that `npm run build`, `dotnet test`, `git diff`, and a plain `node scripts/check.js` were all still permitted. Hardening that quietly breaks real workflows gets reverted by the next person under deadline.
+**Assert the negative and the positive.** Every sandbox change needs a companion check that a valid workflow still runs. Hardening that breaks valid orchestration is incomplete.
 
 ## Testing across platforms
 

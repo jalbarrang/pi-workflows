@@ -45,7 +45,6 @@ export function applyAgentOutcome(
     record.state = outcome.ok ? "done" : "error";
     record.error = outcome.ok ? undefined : (outcome.error ?? "Agent failed");
     record.deliveryError = outcome.deliveryError;
-    record.deniedCommands = outcome.deniedCommands;
   });
   runtime.persistence.checkpoint();
   runtime.emit();
@@ -59,6 +58,5 @@ export function applyAgentOutcome(
     structured: outcome.structured,
     error: outcome.error,
     deliveryError: outcome.deliveryError,
-    deniedCommands: outcome.deniedCommands,
   });
 }

@@ -9,8 +9,6 @@ export const WORKFLOW_PARAMETER_DESCRIPTIONS = {
     "phase(), agent(), parallel(), args, and a final `return`.",
   ),
   args: "Optional JSON string exposed as `args`; valid JSON is parsed, otherwise the raw string is used.",
-  background:
-    "Run in the background, return a run id immediately, and deliver a follow-up when settled.",
   resume: prose(
     "Run id (wf_...) whose returned value is exposed to this script as the `previous` global.",
     "Use it to redo one failed phase without re-paying for the phases that succeeded.",
@@ -33,9 +31,8 @@ export const WORKFLOW_TOOL_DESCRIPTION = [
   "• phase(title) — mark the current runtime phase using a title declared in meta.phases.",
   prose(
     "• await agent(prompt, { label?, phase?, schema?, model?, provider?, effort?, toolTimeoutMs?,",
-    "maxDurationMs?, tools?, allowCommands?, writeScope?, required?, optional? }) — run one isolated",
-    "subagent. It always resolves { ok, output, outputFile, structured?, structuredFile?, error?,",
-    "deliveryError?, deniedCommands? };",
+    "maxDurationMs?, required?, optional? }) — run one isolated subagent. It always resolves { ok,",
+    "output, outputFile, structured?, structuredFile?, error?, deliveryError? };",
     "check ok before",
     "reading structured, never after. A JSON",
     "schema returns a validated object in structured after a terminating structured_output call.",
@@ -43,8 +40,9 @@ export const WORKFLOW_TOOL_DESCRIPTION = [
     "or optional: true for speculative work whose absence must not be reported as an incomplete",
     "phase (the two cannot be combined).",
     "Model/provider override the parent",
-    "model; effort is off|minimal|low|medium|high|xhigh|max. Children receive normal trust-aware",
-    "resources but cannot orchestrate recursively or ask the user.",
+    "model; effort is off|minimal|low|medium|high|xhigh|max. Children use isolated in-memory",
+    "sessions with normal trust-aware resources and default tools, but cannot orchestrate",
+    "recursively or ask the user.",
   ),
   prose(
     "• await parallel([() => agent(...), ...], { concurrency? }) — run zero-argument thunks in",
@@ -82,7 +80,7 @@ export const WORKFLOW_TOOL_DESCRIPTION = [
 ].join("\n");
 export const WORKFLOW_PROMPT_SNIPPET = prose(
   "Orchestrate isolated subagents from inline JavaScript with phase(), agent(), parallel(),",
-  "structured outputs, and optional background execution",
+  "and structured outputs",
 );
 export const STRUCTURED_OUTPUT_SYSTEM_INSTRUCTION = prose(
   "When your task is complete, call the `structured_output` tool exactly once as your final action,",

@@ -45,7 +45,6 @@ export function normalizeDetails(runId: string, value: unknown): WorkflowDetails
         : typeof meta.description === "string"
           ? meta.description
           : undefined,
-    background: raw.background === true,
     status,
     startedAt,
     finishedAt: typeof raw.finishedAt === "number" ? raw.finishedAt : undefined,

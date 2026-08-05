@@ -2,15 +2,15 @@
 
 ## Contract
 
-A script is the body of an async function. It receives five globals and returns a JSON-serializable value. It cannot import, evaluate, reach the filesystem or network, or start a process — see [security.md](security.md).
+A script is the body of an async function. It receives five globals and returns a JSON-serializable value. It cannot import, evaluate, reach the filesystem or network, or start a process — see [security.md](security.md). The workflow tool always waits for the run and displays live progress in the invoking pi session.
 
-| Primitive                    | Contract                                                                                                                                                                           |
-| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `phase(title)`               | Marks the current phase for progress display. An undeclared title is appended to the phase list.                                                                                   |
-| `agent(prompt, options?)`    | Runs one isolated child agent. Always resolves `{ ok, output, outputFile, outputBytes, outputTruncated?, structured?, structuredFile?, error?, deliveryError?, deniedCommands? }`. |
-| `parallel(thunks, options?)` | Runs zero-argument thunks concurrently, preserving result order.                                                                                                                   |
-| `args`                       | The parsed `args` tool parameter, or `undefined`. Frozen.                                                                                                                          |
-| `previous`                   | The value returned by the run named in `resume`, or `undefined`. Frozen.                                                                                                           |
+| Primitive                    | Contract                                                                                                                                                          |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `phase(title)`               | Marks the current phase for progress display. An undeclared title is appended to the phase list.                                                                  |
+| `agent(prompt, options?)`    | Runs one isolated child agent. Always resolves `{ ok, output, outputFile, outputBytes, outputTruncated?, structured?, structuredFile?, error?, deliveryError? }`. |
+| `parallel(thunks, options?)` | Runs zero-argument thunks concurrently, preserving result order.                                                                                                  |
+| `args`                       | The parsed `args` tool parameter, or `undefined`. Frozen.                                                                                                         |
+| `previous`                   | The value returned by the run named in `resume`, or `undefined`. Frozen.                                                                                          |
 
 Never interpolate one agent's output into the next agent's prompt — that is what overflows the prompt limit. Every result carries `outputFile`, an absolute path to the full answer on disk; pass the path and tell the next agent to read it. See [agent-output.md](agent-output.md).
 
@@ -47,25 +47,17 @@ The accepted keys are owned by `sandbox/option-keys.ts`. Their runtime meaning:
 - `effort` — the thinking level. This is the DSL name for pi's internal `thinkingLevel`.
 - `toolTimeoutMs` — per-tool-call timeout for this agent, bounded above. Rejected rather than clamped.
 - `maxDurationMs` — optional wall-clock deadline for this agent's model loop, bounded above. Expiry aborts only that agent and resolves `ok: false`; a required agent then stops the run through normal gate semantics.
-- `tools` — currently only `"read-only"`: removes `write`/`edit` and routes bash through the command policy.
-- `allowCommands` — command globs a governed agent may run. `*` matches within one argument; a trailing `*` matches the rest of the command. Only valid when the agent is governed.
-- `writeScope` — path globs `write`/`edit` are fenced to. Implies the agent is governed, because a fence bash can write around is not a fence. Also permits a bare `git mv` between two in-scope paths and a bare `mkdir` of an in-scope path; see [security.md](security.md) for the bounds. A `dir/**` glob matches `dir` itself, so a directory-level relocation needs only the one form.
 - `required`, `optional` — booleans only, and mutually exclusive. `required` marks the call a gate: any failure, including one before scheduling, aborts the run. `optional` marks it best-effort: it still resolves `{ ok: false }`, but a phase served only by optional agents is never listed in `incompletePhases` and the agent renders as `failed (optional)` rather than `FAILED`. A truthy string would silently arm or disarm either, so non-booleans are rejected, and so is arming both — that is a contradiction, not a precedence question.
 
 ## Validation order
 
-`run/agent-options.ts` resolves options in a fixed order and returns on the first failure: model, effort, tool timeout, agent duration, tool mode, write scope, allowed commands, required, optional. Everything runs _before_ `RunController.schedule`, so an invalid call consumes no concurrency permit and no call budget. Unknown keys are rejected even earlier, in `run/agent-call.ts`, straight after the empty-prompt check.
+`run/agent-options.ts` resolves options in a fixed order and returns on the first failure: model, effort, tool timeout, agent duration, required, optional. Everything runs _before_ `RunController.schedule`, so an invalid call consumes no concurrency permit and no call budget. Unknown keys are rejected even earlier, in `run/agent-call.ts`, straight after the empty-prompt check.
 
-Two rejections exist purely to stop an option from being inert:
+Gate authoring — how to write a check a model cannot talk its way past — lives in [gates.md](gates.md).
 
-- `allowCommands` without `tools: "read-only"` or `writeScope` — bash would be unrestricted, so the patterns would do nothing.
-- `writeScope` together with `tools: "read-only"` — read-only removes `write`/`edit`, so there is nothing left to fence.
+## Child agent isolation
 
-Gate authoring — how to write a check a model cannot talk its way past, and what a governed agent can actually run — lives in [gates.md](gates.md).
-
-## Blocked is not the same as unneeded
-
-Every command the policy refuses is recorded and returned as `deniedCommands` on the agent result, and rendered in the tool result, the dashboard, and `report.md`. A denial reaches the child as an error tool result, so an agent is free to adapt — and adapting frequently means finishing successfully having changed nothing. In run `wf_502f35f143f6` two of three write agents returned `ok: true` after their required `git mv` was refused, and only the third said so. The log is deduplicated and capped in `agent/denied.ts`; it is a signal for the orchestrator, not an audit trail.
+Each call creates a fresh in-memory pi session in the parent working directory. The child receives normal trust-aware resources and pi's default tools. The extension excludes recursive orchestration and user-input tools, but it does not restrict filesystem writes or shell commands. The workflow script runs in a separate permission-restricted process; the agent session runs in the host process. See [the upstream sandbox research](research/upstream-workflow-agent-sandbox.md).
 
 ## Re-running one phase
 
@@ -74,7 +66,6 @@ There is no resuming a script: the sandbox holds no continuation to restore, and
 Pass `resume: "wf_…"` and the script receives that run's returned value as the frozen `previous` global. A redo of one failed gate then costs one agent call instead of the whole pipeline:
 
 ```js
-phase("Implement");
 const work = previous?.work ?? (await agent(implementPrompt, { label: "implement" })).output;
 phase("Review");
 const review = await agent(reviewPrompt(work), { label: "review", schema: GATE, required: true });
@@ -86,7 +77,9 @@ The returned value has to carry forward what a re-run will need — this is the 
 
 ## Static preflight
 
-Before a run starts, `scripting/model-refs.ts` walks the AST for `agent()` calls and collects `model`/`provider` pairs that are string literals. `run/model-preflight.ts` checks each against the registry and reports every offender at once. A dynamic or computed model expression is skipped — a false "unknown model" would block a valid workflow, so the check is deliberately best-effort in one direction only. This exists because a model typo, or a model removed from `models.json` between runs, otherwise surfaces when its phase executes — potentially after many minutes of successful work.
+Before a run starts, `scripting/agent-calls.ts` walks the AST and collects statically decidable facts from each `agent()` call. `run/script-preflight.ts` reports blank prompts, explicit unknown keys, and invalid literal option combinations with source locations. It uses the runtime option resolvers, so the static and runtime rules cannot drift.
+
+`scripting/model-refs.ts` collects literal `model` and `provider` pairs, and `run/model-preflight.ts` reports all unknown models. Dynamic values are skipped because a guessed error could block a valid workflow. These checks run before the run creates an artifact or starts an agent. A late option error can otherwise waste the work from all earlier phases.
 
 ## Phases
 

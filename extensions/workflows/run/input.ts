@@ -3,7 +3,6 @@ import type { AgentOptionKey } from "../sandbox/index.ts";
 export interface WorkflowInput {
   script: string;
   args?: string;
-  background?: boolean;
   /** Run id whose returned value is exposed to this script as `previous`. */
   resume?: string;
 }
@@ -18,11 +17,6 @@ export interface ScriptAgentResult {
    * but its transport then died. The work stands; the delivery did not.
    */
   deliveryError?: string;
-  /**
-   * Commands the policy refused. Present so an orchestrator can tell an agent
-   * that had nothing to do from one that was blocked from doing it.
-   */
-  deniedCommands?: string[];
   /**
    * Absolute path to this agent's full output on disk. `output` is capped for the
    * IPC channel; this file is not. Hand the path to the next agent and tell it to

@@ -40,7 +40,6 @@
     "prepare": "husky"
   },
   "dependencies": {
-    "@dreki-gg/pi-command-sandbox": "^0.4.2",
     "acorn": "^8.17.0",
     "effect": "4.0.0-beta.101"
   },

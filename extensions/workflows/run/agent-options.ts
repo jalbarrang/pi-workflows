@@ -7,26 +7,16 @@ import { resolveEffort, resolveModel, type ModelResolutionContext } from "./mode
 import { resolveOptional } from "./optional-resolution.ts";
 import { resolveRequired } from "./required-resolution.ts";
 import { resolveToolTimeout } from "./timeout-resolution.ts";
-import { resolveAllowCommands, resolveTools, resolveWriteScope } from "./tools-resolution.ts";
 
 export interface ResolvedAgentOptions {
   model?: WorkflowModel;
   thinkingLevel: ThinkingLevel;
   toolCallTimeoutMs: number;
   maxDurationMs?: number;
-  readOnly: boolean;
-  writeScope?: readonly string[];
-  allowCommands?: readonly string[];
   /** Failure of this agent aborts the whole run instead of resolving `ok: false`. */
   required: boolean;
   /** Failure of this agent is expected, so it never counts as an incomplete phase. */
   optional: boolean;
-  /**
-   * True when bash must go through the command policy. Implied by read-only and
-   * by a write scope: a path fence that bash can trivially write around is not a
-   * fence at all.
-   */
-  policyGoverned: boolean;
 }
 
 /**
@@ -49,13 +39,6 @@ export function resolveAgentOptions(
   if (timeout.error) return { error: timeout.error };
   const duration = resolveAgentDuration(options);
   if (duration.error) return { error: duration.error };
-  const tools = resolveTools(options);
-  if (tools.error) return { error: tools.error };
-  const scope = resolveWriteScope(options, tools.readOnly);
-  if (scope.error) return { error: scope.error };
-  const policyGoverned = tools.readOnly || scope.writeScope !== undefined;
-  const allow = resolveAllowCommands(options, policyGoverned);
-  if (allow.error) return { error: allow.error };
   const gate = resolveRequired(options);
   if (gate.error) return { error: gate.error };
   const bestEffort = resolveOptional(options, gate.required);
@@ -66,12 +49,8 @@ export function resolveAgentOptions(
       thinkingLevel: effort.effort ?? inherited,
       toolCallTimeoutMs: timeout.timeoutMs ?? TOOL_TIMEOUT_MS,
       maxDurationMs: duration.durationMs,
-      readOnly: tools.readOnly,
-      policyGoverned,
       required: gate.required,
       optional: bestEffort.optional,
-      writeScope: scope.writeScope,
-      allowCommands: allow.allowCommands,
     }),
   };
 }

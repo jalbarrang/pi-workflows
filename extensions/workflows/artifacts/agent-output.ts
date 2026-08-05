@@ -26,7 +26,7 @@ export interface AgentArtifactPayload {
  * missing is a channel with no downstream consumer to protect — a file — so an
  * answer survives the run that produced it.
  *
- * Observed in run `wf_2cf06cc43747`: four read-only recon agents finished after
+ * Observed in run `wf_2cf06cc43747`: four recon agents finished after
  * 11 minutes, the script then built an oversized synthesis prompt, the sandbox
  * died, and the only surviving copies of the four reports were transcript entries
  * already collapsed to `{"truncated": true, "reason": "serialized value exceeded

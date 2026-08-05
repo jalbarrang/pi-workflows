@@ -14,9 +14,6 @@ export const AGENT_OPTION_KEYS = [
   "effort",
   "toolTimeoutMs",
   "maxDurationMs",
-  "tools",
-  "allowCommands",
-  "writeScope",
   "required",
   "optional",
 ] as const;

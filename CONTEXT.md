@@ -14,8 +14,3 @@
 - **Gate**: an agent call whose failure stops the run instead of resolving a failed result.
 - **Best-effort call**: an agent call declared speculative, whose failure is not reported as a hole.
 - **Delivery failure**: a transport fault that arrives after an agent's result was already recorded; the work stands.
-- **Command policy**: the ruling on whether a governed agent may run a given shell command.
-- **Write scope**: the set of paths a scoped agent is permitted to modify.
-- **Governed agent**: an agent call whose shell commands and file writes are subject to policy rather than instruction.
-- **Fenced mutation**: a rename or directory creation a fenced agent may perform, permitted only for paths inside its write scope.
-- **Denied command**: a command the policy refused, reported on the agent result so a blocked agent is not mistaken for an idle one.

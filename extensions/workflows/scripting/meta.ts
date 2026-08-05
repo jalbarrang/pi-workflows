@@ -3,6 +3,20 @@ import { literalValue } from "./literals.ts";
 import { emptyMeta, sanitizeMeta } from "./sanitize.ts";
 import type { PreparedWorkflowScript, WorkflowMeta } from "./types.ts";
 
+function validateExecutableBody(source: string) {
+  const wrapped =
+    `function host(agent, parallel, phase, args, previous) { "use strict"; ` +
+    `return (async function workflow() {\n${source}\n})(); }`;
+  try {
+    parse(wrapped, { ecmaVersion: "latest", sourceType: "script" });
+  } catch (error) {
+    const syntax = error as SyntaxError & { loc?: { line: number; column: number } };
+    if (!syntax.loc) throw error;
+    const message = syntax.message.replace(/ \(\d+:\d+\)$/, "");
+    throw new SyntaxError(`${message} (${Math.max(1, syntax.loc.line - 1)}:${syntax.loc.column})`);
+  }
+}
+
 function metadataDeclaration(statement: Program["body"][number]) {
   if (statement.type === "ImportDeclaration") {
     throw new Error("workflow scripts cannot use static imports");
@@ -48,10 +62,14 @@ export function prepareWorkflowScript(source: string): PreparedWorkflowScript {
     range = found;
     meta = sanitizeMeta(found.value);
   }
-  if (!range) return { source, meta };
-  const removed = source.slice(range.start, range.end);
-  const blank = `;${removed.slice(1).replace(/[^\n\r]/g, " ")}`;
-  return { source: source.slice(0, range.start) + blank + source.slice(range.end), meta };
+  let executable = source;
+  if (range) {
+    const removed = source.slice(range.start, range.end);
+    const blank = `;${removed.slice(1).replace(/[^\n\r]/g, " ")}`;
+    executable = source.slice(0, range.start) + blank + source.slice(range.end);
+  }
+  validateExecutableBody(executable);
+  return { source: executable, meta };
 }
 
 const cache = new Map<string, WorkflowMeta>();

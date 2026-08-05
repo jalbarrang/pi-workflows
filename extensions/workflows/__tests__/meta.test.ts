@@ -38,3 +38,10 @@ test("executable and unsupported metadata fail closed", () => {
   assert.throws(() => prepareWorkflowScript(`export default 1; return 1;`), /may only export/);
   assert.deepEqual(extractMeta(`export const meta = { name: process.exit() }`), { phases: [] });
 });
+test("the executable body is parsed in its exact async-function context", () => {
+  assert.doesNotThrow(() => prepareWorkflowScript(`await agent("scan"); return true;`));
+  assert.throws(
+    () => prepareWorkflowScript(`return import.meta.url;`),
+    /Cannot use 'import.meta' outside a module \(1:7\)/,
+  );
+});

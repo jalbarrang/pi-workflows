@@ -14,6 +14,16 @@ test("sanitizeOptions keeps documented keys and reports unknown ones", () => {
   assert.deepEqual(sanitized.unknownKeys, ["thinking", "retries"]);
 });
 
+test("removed permission options are runtime errors", () => {
+  const sanitized = sanitizeOptions({
+    tools: "read-only",
+    allowCommands: ["npm test"],
+    writeScope: ["src/**"],
+  });
+  assert.deepEqual(sanitized.options, {});
+  assert.deepEqual(sanitized.unknownKeys, ["tools", "allowCommands", "writeScope"]);
+});
+
 test("sanitizeOptions omits undefined values without reporting them", () => {
   const sanitized = sanitizeOptions({ label: "review", phase: undefined });
   assert.deepEqual(sanitized.options, { label: "review" });

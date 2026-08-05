@@ -56,9 +56,6 @@ export function renderDetail(state: DashboardState, width: number, height: numbe
       ...(agent.deliveryError
         ? [`    ${theme.fg("dim", `delivery failed after result: ${agent.deliveryError}`)}`]
         : []),
-      ...(agent.deniedCommands?.length
-        ? [`    ${theme.fg("dim", `denied: ${agent.deniedCommands.join(", ")}`)}`]
-        : []),
       // Include every artifact that landed, even when the agent then failed.
       ...agentArtifactSummaries(agent, true).map((artifact) => `    ${theme.fg("dim", artifact)}`),
     ];

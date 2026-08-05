@@ -1,5 +1,5 @@
 import { getMarkdownTheme, type ExtensionContext } from "@earendil-works/pi-coding-agent";
-import { Container, Markdown, Spacer, Text } from "@earendil-works/pi-tui";
+import { type Component, Container, Markdown, Spacer, Text } from "@earendil-works/pi-tui";
 import { formatElapsed, formatUsage, totalUsage } from "../run/format.ts";
 import { isSkippedPhase, phaseGroups } from "../run/groups.ts";
 import type { WorkflowDetails } from "../run/types.ts";
@@ -8,8 +8,9 @@ import { resultJson } from "./result-value.ts";
 import { agentContext, stateSquare } from "./theme.ts";
 
 type Theme = ExtensionContext["ui"]["theme"];
-export function renderExpanded(details: WorkflowDetails, theme: Theme) {
-  const container = new Container();
+export function renderExpanded(details: WorkflowDetails, theme: Theme, previous?: Component) {
+  const container = previous instanceof Container ? previous : new Container();
+  container.clear();
   container.addChild(new Text(renderHeader(details, theme), 0, 0));
   if (details.description) container.addChild(new Text(theme.fg("dim", details.description), 0, 0));
   // includeEmpty is on so declared-but-conditional phases can report as skipped;

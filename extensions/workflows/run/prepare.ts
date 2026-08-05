@@ -14,13 +14,12 @@ import {
   writeFileAtomic,
 } from "../artifacts/index.ts";
 import { compact } from "../shared/compact.ts";
-import { CommandPolicy } from "../policy/index.ts";
 import type { PreparedWorkflowScript } from "../scripting/index.ts";
 import { RunController } from "./controller.ts";
 import type { WorkflowInput } from "./input.ts";
-import { preflightModels } from "./model-preflight.ts";
 import { createProgressEmitter } from "./progress.ts";
 import type { RunRuntime } from "./runtime.ts";
+import { preflightWorkflowScript } from "./script-preflight.ts";
 import { WorkflowState } from "./state.ts";
 import type { WorkflowDetails } from "./types.ts";
 
@@ -31,27 +30,23 @@ export async function prepareRun(
   signal: AbortSignal,
   update: AgentToolUpdateCallback<WorkflowDetails> | undefined,
   context: ExtensionContext,
-  layer: Layer.Layer<ArtifactStore | CommandPolicy>,
+  layer: Layer.Layer<ArtifactStore>,
   activeRunIds: Iterable<string> = [],
 ) {
-  // Reject unknown models before any run directory, artifact, or agent exists.
-  const unknownModels = preflightModels(prepared.source, context);
-  if (unknownModels) throw new Error(unknownModels);
+  // Reject statically decidable authoring mistakes before any run directory,
+  // artifact, or agent exists. Dynamic values still use exact runtime validation.
+  const scriptError = preflightWorkflowScript(prepared.source, context, pi.getThinkingLevel());
+  if (scriptError) throw new Error(scriptError);
   const runId = `wf_${randomBytes(6).toString("hex")}`;
   const workflowsDir = path.join(getAgentDir(), "workflows");
-  // Swept here, before this run writes anything: a sweep racing a live run's
-  // atomic writes would corrupt the run that is currently being paid for. Every
-  // active run is protected, because a background run can outlive the one that
-  // triggers the sweep.
+  // Sweep before this run writes anything and protect every active run so the sweep cannot race atomic writes.
   sweepRunDirectories(workflowsDir, { protect: activeRunIds });
   const runDir = path.join(workflowsDir, runId);
-  const background = !!input.background && context.hasUI;
   const details: WorkflowDetails = compact({
     runId,
     sessionId: context.sessionManager.getSessionId(),
     name: prepared.meta.name,
     description: prepared.meta.description,
-    background,
     status: "running",
     startedAt: Date.now(),
     phases: [...prepared.meta.phases],
@@ -60,22 +55,15 @@ export async function prepareRun(
   });
   writeFileAtomic(path.join(runDir, "script.js"), input.script);
   if (input.args !== undefined) writeFileAtomic(path.join(runDir, "args.json"), input.args);
-  const services = await Effect.runPromise(
-    Effect.gen(function* () {
-      const store = yield* ArtifactStore;
-      const policy = yield* CommandPolicy;
-      return { store, policy };
-    }).pipe(Effect.provide(layer)),
-  );
-  const store = services.store;
+  const store = await Effect.runPromise(ArtifactStore.pipe(Effect.provide(layer)));
   const persist = (directory: string, current: WorkflowDetails) => {
     Effect.runSync(store.save(directory, current));
   };
   persist(runDir, details);
   const state = new WorkflowState(details);
   const persistence = createWorkflowPersistence(runDir, details, { persist });
-  const controller = new RunController(background ? undefined : signal);
-  const progress = createProgressEmitter(background, () => state.snapshot(), update);
+  const controller = new RunController(signal);
+  const progress = createProgressEmitter(() => state.snapshot(), update);
   const runtime: RunRuntime = {
     pi,
     context,
@@ -83,8 +71,7 @@ export async function prepareRun(
     state,
     persistence,
     runDir,
-    checkCommand: services.policy.check,
     emit: progress.emit,
   };
-  return { runId, runDir, background, runtime, progress };
+  return { runId, runDir, runtime, progress };
 }

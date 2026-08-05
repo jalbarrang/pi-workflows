@@ -38,9 +38,9 @@ function runDirectories(root: string) {
  * outlives them — an older run stays listable and resumable after its `agents/`
  * directory is gone.
  *
- * Runs the caller is currently executing are protected regardless of age, and a
- * background run can be older than the run that triggers the sweep. Every
- * failure is swallowed: housekeeping must never take down a run.
+ * Runs the caller is currently executing are protected regardless of age so a sweep cannot race their writes.
+ *
+ * Every failure is swallowed: housekeeping must never take down a run.
  */
 export function sweepRunDirectories(root: string, options: RetentionOptions = {}) {
   const keepArtifacts = Math.max(1, options.keepArtifacts ?? KEEP_AGENT_ARTIFACTS);

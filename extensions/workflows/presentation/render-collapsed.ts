@@ -1,5 +1,5 @@
 import { keyHint, type ExtensionContext } from "@earendil-works/pi-coding-agent";
-import { Text } from "@earendil-works/pi-tui";
+import { type Component, Text } from "@earendil-works/pi-tui";
 import { formatElapsed } from "../run/format.ts";
 import type { WorkflowDetails } from "../run/types.ts";
 import { totalUsage } from "../run/format.ts";
@@ -7,7 +7,7 @@ import { agentContext, stateSquare } from "./theme.ts";
 import { renderHeader } from "./render-header.ts";
 
 type Theme = ExtensionContext["ui"]["theme"];
-export function renderCollapsed(details: WorkflowDetails, theme: Theme) {
+export function renderCollapsed(details: WorkflowDetails, theme: Theme, previous?: Component) {
   let text = renderHeader(details, theme);
   for (const agent of details.agents) {
     const context = agentContext(agent);
@@ -20,5 +20,7 @@ export function renderCollapsed(details: WorkflowDetails, theme: Theme) {
   if (totals) text += `\n  ${theme.fg("dim", `Total: ${totals}`)}`;
   if (details.error) text += `\n  ${theme.fg("error", `Error: ${details.error}`)}`;
   text += `\n${theme.fg("muted", `(${keyHint("app.tools.expand", "to expand")})`)}`;
-  return new Text(text, 0, 0);
+  const component = previous instanceof Text ? previous : new Text("", 0, 0);
+  component.setText(text);
+  return component;
 }

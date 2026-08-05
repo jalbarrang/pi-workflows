@@ -5,30 +5,34 @@ import { PROGRESS_INTERVAL_MS } from "./limits.ts";
 import { compactToolDetails } from "./result.ts";
 
 export function createProgressEmitter(
-  background: boolean,
   details: () => WorkflowDetails,
   update?: AgentToolUpdateCallback<WorkflowDetails>,
 ) {
   let timer: ReturnType<typeof setTimeout> | undefined;
   let last = 0;
-  const flush = () => {
+  let lastPayload = "";
+  const publish = () => {
     timer = undefined;
     last = Date.now();
-    if (background) return;
+    if (!update) return;
     const current = details();
-    update?.({
-      content: [{ type: "text", text: summary(current) }],
+    const payload = {
+      content: [{ type: "text" as const, text: summary(current) }],
       details: compactToolDetails(current),
-    });
+    };
+    const serialized = JSON.stringify(payload);
+    if (serialized === lastPayload) return;
+    lastPayload = serialized;
+    update(payload);
   };
   return {
     emit() {
       if (timer) return;
-      timer = setTimeout(flush, Math.max(0, PROGRESS_INTERVAL_MS - (Date.now() - last)));
+      timer = setTimeout(publish, Math.max(0, PROGRESS_INTERVAL_MS - (Date.now() - last)));
     },
     flush() {
       if (timer) clearTimeout(timer);
-      flush();
+      publish();
     },
   };
 }

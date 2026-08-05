@@ -22,7 +22,7 @@ const extensionSource = `
   }
 `;
 
-test("workflow child sessions remove extension orchestration tools", async () => {
+test("workflow children preserve default tools and remove recursive orchestration", async () => {
   const directory = await mkdtemp(path.join(tmpdir(), "pi-workflow-leaf-tools-"));
   let session;
   try {
@@ -42,7 +42,9 @@ test("workflow child sessions remove extension orchestration tools", async () =>
     const names = session.getAllTools().map((tool) => tool.name);
     assert.equal(names.includes("subagent"), false);
     assert.equal(names.includes("workflow"), false);
-    assert.equal(names.includes("leaf_fixture"), true);
+    for (const name of ["read", "bash", "edit", "write", "leaf_fixture"]) {
+      assert.equal(names.includes(name), true, `missing child tool: ${name}`);
+    }
   } finally {
     if (session) await shutdownChildSession(session);
     await rm(directory, { recursive: true, force: true });

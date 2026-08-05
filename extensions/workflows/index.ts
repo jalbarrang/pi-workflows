@@ -40,7 +40,9 @@ export default function workflows(pi: ExtensionAPI) {
         WorkflowServicesLayer,
         { settled: indicator.settled, changed: indicator.update },
       ),
-    renderCall: (input, theme) => renderWorkflowCall(input, theme),
-    renderResult: (result, options, theme) => renderWorkflowResult(result, options.expanded, theme),
+    renderCall: (input, theme, renderContext) =>
+      renderWorkflowCall(input, theme, renderContext.lastComponent, renderContext.argsComplete),
+    renderResult: (result, options, theme, renderContext) =>
+      renderWorkflowResult(result, options.expanded, theme, renderContext.lastComponent),
   });
 }

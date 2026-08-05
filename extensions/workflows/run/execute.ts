@@ -6,9 +6,7 @@ import type {
 } from "@earendil-works/pi-coding-agent";
 import { ArtifactStore, loadPreviousResult } from "../artifacts/index.ts";
 import { compact } from "../shared/compact.ts";
-import type { CommandPolicy } from "../policy/index.ts";
 import { buildWorkflowResultMessage } from "../presentation/result-text.ts";
-import { launchInBackground } from "./background.ts";
 import { SandboxRunner } from "../sandbox/index.ts";
 import { prepareWorkflowScript } from "../scripting/index.ts";
 import type { WorkflowInput } from "./input.ts";
@@ -30,7 +28,7 @@ export async function executeWorkflow(
   update: AgentToolUpdateCallback<WorkflowDetails> | undefined,
   context: ExtensionContext,
   active: Map<string, ActiveRun>,
-  layer: Layer.Layer<ArtifactStore | SandboxRunner | CommandPolicy>,
+  layer: Layer.Layer<ArtifactStore | SandboxRunner>,
   hooks: ExecuteHooks,
 ) {
   let prepared;
@@ -56,9 +54,6 @@ export async function executeWorkflow(
   });
   activeRun.completion = completion;
   hooks.changed();
-  if (run.background) {
-    return launchInBackground(pi, { ...run, completion, active, hooks });
-  }
   try {
     await completion;
   } finally {

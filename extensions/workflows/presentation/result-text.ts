@@ -33,23 +33,9 @@ export function buildWorkflowResultMessage(details: WorkflowDetails, runDir: str
       const note =
         agent.error ?? (agent.deliveryError && `delivery failed: ${agent.deliveryError}`);
       lines.push(`- [${agent.label}]${phase} ${state}${note ? ` — ${note}` : ""}`);
-      // A blocked agent frequently reports success having changed nothing.
-      if (agent.deniedCommands?.length) {
-        lines.push(`  denied commands: ${agent.deniedCommands.join(", ")}`);
-      }
       for (const artifact of agentArtifactSummaries(agent)) lines.push(`  ${artifact}`);
     }
   }
   if (details.result !== undefined) lines.push("", "Result:", resultJson(details.result));
   return lines.join("\n");
-}
-export function backgroundFollowUp(details: WorkflowDetails, runDir: string) {
-  return `[Background workflow ${details.runId} ${details.status}]\n\n${buildWorkflowResultMessage(details, runDir)}`;
-}
-export function backgroundLaunch(details: WorkflowDetails, runDir: string) {
-  return [
-    `Workflow ${details.name ? `"${details.name}"` : details.runId} launched in background.`,
-    `Artifacts: ${shortenHome(runDir)}`,
-    "A follow-up will arrive when it finishes; /workflows shows progress.",
-  ].join("\n");
 }

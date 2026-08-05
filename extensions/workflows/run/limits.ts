@@ -7,5 +7,6 @@ export const TOOL_TIMEOUT_MS = 180_000;
 export const MAX_TOOL_TIMEOUT_MS = 600_000;
 /** Ceiling for an optional per-agent wall-clock deadline. */
 export const MAX_AGENT_DURATION_MS = 3_600_000;
-export const PROGRESS_INTERVAL_MS = 120;
+/** UI refresh ceiling. Faster redraws visibly flash large workflow tool blocks. */
+export const PROGRESS_INTERVAL_MS = 500;
 export const PREVIEW_LENGTH = 200;

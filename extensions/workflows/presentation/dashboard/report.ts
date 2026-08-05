@@ -45,9 +45,6 @@ export function buildReport(details: WorkflowDetails) {
       if (agent.error) lines.push(`  - error: ${agent.error}`);
       if (agent.deliveryError)
         lines.push(`  - delivery failed after result: ${agent.deliveryError}`);
-      if (agent.deniedCommands?.length) {
-        lines.push(`  - denied commands: ${agent.deniedCommands.join(", ")}`);
-      }
       for (const artifact of agentArtifactSummaries(agent, true)) lines.push(`  - ${artifact}`);
     }
   }

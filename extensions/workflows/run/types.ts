@@ -38,8 +38,6 @@ export interface AgentRecord {
   error?: string;
   /** Transport fault after a recorded result: the agent is `done`, not failed. */
   deliveryError?: string;
-  /** Commands the command policy refused during this agent's run. */
-  deniedCommands?: string[];
   /** Declared best-effort: this agent failing is not a hole in its phase. */
   optional?: boolean;
   preview: string;
@@ -59,7 +57,6 @@ export interface WorkflowDetails {
   sessionId?: string;
   name?: string;
   description?: string;
-  background: boolean;
   status: WorkflowStatus;
   startedAt: number;
   finishedAt?: number;

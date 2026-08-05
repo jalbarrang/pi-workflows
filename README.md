@@ -30,8 +30,6 @@ phase("Review");
 const review = await agent(`Review ${args.target}. Do not edit.`, {
   label: "review",
   schema: FINDINGS,
-  tools: "read-only",
-  allowCommands: ["npm run *"],
   required: true,
 });
 if (!review.ok) return { status: "unreviewed", failed: review.error };
@@ -40,7 +38,6 @@ if (blocking.length > 0) {
   phase("Fixup");
   await agent(`Fix these findings: ${JSON.stringify(blocking)}`, {
     label: "fixup",
-    writeScope: ["src/**"],
     toolTimeoutMs: 420000,
   });
 }
@@ -51,7 +48,9 @@ return { blocking, fixed: blocking.length > 0 };
 
 ## DSL reference
 
-The async script receives only `phase(title)`, `agent(prompt, options)`, `parallel(thunks, options)`, `args`, and `previous`. `agent()` always resolves `{ ok, output, outputFile, structured?, structuredFile?, error?, deliveryError?, deniedCommands? }`; check `ok`. `output` is capped for the IPC channel, `outputFile` is the whole answer on disk — hand the path to the next agent rather than interpolating the text into its prompt. A run allows 32 agent calls with global concurrency 4. Pass `background: true` to return immediately and receive a follow-up after settlement; blocking runs render throttled live progress. Pass `resume: "wf_…"` to hand a previous run's returned value to the script as the frozen `previous` global, so redoing one failed gate does not re-pay for the phases that passed — see [docs/dsl.md](docs/dsl.md).
+The async script receives only `phase(title)`, `agent(prompt, options)`, `parallel(thunks, options)`, `args`, and `previous`. `agent()` always resolves `{ ok, output, outputFile, structured?, structuredFile?, error?, deliveryError? }`; check `ok`. `output` is capped for the IPC channel, `outputFile` is the whole answer on disk — hand the path to the next agent rather than interpolating the text into its prompt. A run allows 32 agent calls with global concurrency 4. Each workflow stays attached to its tool call. It shows throttled live progress in the current pi session. Use another pi session for independent work. Pass `resume: "wf_…"` to hand a previous run's returned value to the script as the frozen `previous` global, so redoing one failed gate does not re-pay for the phases that passed — see [docs/dsl.md](docs/dsl.md).
+
+Before a run writes artifacts or starts agents, static preflight checks each decidable `agent()` call. It reports option locations and all unknown literal models. It catches blank prompts, unknown literal option keys, and invalid literal combinations. Dynamic values use the same validation when each call executes.
 
 | Option              | Meaning                                                                              |
 | ------------------- | ------------------------------------------------------------------------------------ |
@@ -61,18 +60,13 @@ The async script receives only `phase(title)`, `agent(prompt, options)`, `parall
 | `effort`            | Thinking level: `off`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`.           |
 | `toolTimeoutMs`     | Per-tool-call timeout. Default 180000, maximum 600000.                               |
 | `maxDurationMs`     | Optional wall-clock deadline for one agent. Maximum 3600000.                         |
-| `tools`             | `"read-only"` removes `write`/`edit` and puts bash behind the command policy.        |
-| `allowCommands`     | Command globs a governed agent may run, e.g. `["npm run *", "dotnet *"]`.            |
-| `writeScope`        | Path globs `write`/`edit` are fenced to, e.g. `["client/**"]`.                       |
 | `required`          | Gate: failure stops the run. `optional` is its inverse: failure is not a hole.       |
 
-Declare a conditional phase as `{ title, optional: true }` so a clean run reports it as skipped rather than pending, and mark a speculative agent `optional: true` so a phase served only by best-effort work is not flagged as a hole (`required` and `optional` together are rejected). Use `maxDurationMs` to bound an agent that can keep making legal tool calls indefinitely; timeout resolves `ok: false`, and a required timeout stops the run. Unknown option keys are rejected rather than ignored, so a typo such as `thinking` fails immediately instead of silently inheriting a default. Commands the policy refused come back as `deniedCommands` on the result and in the run report, so an agent that did nothing because it was blocked is distinguishable from one that had nothing to do.
+Declare a conditional phase as `{ title, optional: true }` so a clean run reports it as skipped rather than pending, and mark a speculative agent `optional: true` so a phase served only by best-effort work is not flagged as a hole (`required` and `optional` together are rejected). Use `maxDurationMs` to bound an agent that can keep making legal tool calls indefinitely; timeout resolves `ok: false`, and a required timeout stops the run. Unknown option keys are rejected rather than ignored, so a typo such as `thinking` fails immediately instead of silently inheriting a default.
 
-## What is actually enforced
+## Child agent isolation
 
-`tools: "read-only"` and `writeScope` both route bash through a command policy — a path fence that bash can write around is not a fence. The policy parses each command segment, denies redirects and command substitution, and applies a deny list that `allowCommands` cannot override: shell re-entry, PowerShell, command wrappers such as `env`/`xargs`/`timeout`, interpreter eval flags such as `node -e`, and fetch-and-run launchers such as `npx`.
-
-`writeScope` resolves symlinks and canonical casing before matching, so neither a symlink inside the scope nor a case-only variant escapes it. Requests outside the working directory are refused outright. A write-scoped agent may run two mutating commands — a bare `git mv` whose source and destination both land inside the fence, and a bare `mkdir` of an in-scope path, with no shell metacharacters and no chaining — because a fenced agent that cannot rename a file or create a directory cannot extract a module. A `dir/**` glob matches `dir` itself so a directory can be relocated. `mv`, `cp`, `rm`, and `git mv -f` stay denied and `allowCommands` cannot re-enable them. Two honest limits remain: `allowCommands` grants whatever those commands do, so allowing `npm run *` grants every script in the repo's `package.json`, and a workflow with no `tools` or `writeScope` is unrestricted exactly as before.
+Each `agent()` call uses a fresh in-memory pi session with the parent working directory, normal trust-aware resources, and pi's default tools. The extension excludes recursive orchestration and user-input tools. It does not add read-only mode, filesystem write fences, or a shell command policy. The Node permission sandbox contains only the model-authored workflow script; child agent sessions and their tools run in the host process. See [the upstream sandbox research](docs/research/upstream-workflow-agent-sandbox.md).
 
 ## Inspect runs
 
@@ -86,13 +80,11 @@ Each run is checkpointed under `~/.pi/agent/workflows/<runId>/` with `script.js`
 
 - `effort` is the DSL name for pi's internal `thinkingLevel`. Some hosts map `off`, `minimal`, or `xhigh` to `null` in `models.json`; requesting one of those is not an error and is not honored.
 - The useful concurrency ceiling is below the policy cap of 4 when agents run compilers, because they contend for CPU. Pass a lower `concurrency` to `parallel()`.
-- Run each verification gate as its own bash call even with a raised `toolTimeoutMs`; it keeps failure attribution clean. Shell control flow (`while`, `for`, `if`), command substitution, redirects, and inline `VAR=x` assignments are never runnable by a governed agent — use `find … -exec wc -l {} +` rather than a `while read` pipeline, or the gate reports "(no output)" and reads like a pass.
+- Run each verification gate as its own bash call even with a raised `toolTimeoutMs`; it keeps failure attribution clear.
 - **Windows:** a bash shell is required (Git Bash, MSYS2, Cygwin, or WSL) because pi resolves bash on Windows and throws without it. PowerShell is not used as the child shell; supporting it would require a change in pi itself.
 - Runtime services pin `effect` exactly to `4.0.0-beta.101`. Effect v4 is beta software; change the pin only with a full gate run.
 
-## Differences from upstream
-
-Ported from [`davis7dotsh/my-pi-setup`](https://github.com/davis7dotsh/my-pi-setup) and since extended. `toolTimeoutMs`, `maxDurationMs`, `tools`, `allowCommands`, `writeScope`, `required`, optional phases and agents, unknown-key rejection, pre-run model validation, `incompletePhases`, and delivery-failure salvage are additions and are not upstream DSL.
+- Ported from [`davis7dotsh/my-pi-setup`](https://github.com/davis7dotsh/my-pi-setup) and since extended. `toolTimeoutMs`, `maxDurationMs`, `required`, optional phases and agents, unknown-key rejection, pre-run validation, `incompletePhases`, and delivery-failure salvage are additions and are not upstream DSL.
 
 ## Verify
 
