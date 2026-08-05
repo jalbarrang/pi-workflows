@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.3.0](https://github.com/jalbarrang/pi-workflows/compare/v0.2.1...v0.3.0) (2026-08-05)
+
+
+### ⚠ BREAKING CHANGES
+
+* **workflows:** Remove background, tools, allowCommands, and writeScope options.
+
+### Features
+
+* **workflows:** enforce foreground execution ([9272e6c](https://github.com/jalbarrang/pi-workflows/commit/9272e6cccce70f0b1765fe58916d0be191a79ffb))
+
 ## [0.2.1](https://github.com/jalbarrang/pi-workflows/compare/v0.2.0...v0.2.1) (2026-07-27)
 
 
