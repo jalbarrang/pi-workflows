@@ -1,37 +1,17 @@
-import { truncateToWidth, wrapTextWithAnsi } from "@earendil-works/pi-tui";
+import { truncateToWidth } from "@earendil-works/pi-tui";
 import { formatElapsed } from "../../run/format.ts";
-import type { TranscriptEntry } from "../../run/types.ts";
 import { agentContext, stateSquare } from "../theme.ts";
+import { transcriptRows } from "./render-entries.ts";
 import type { DashboardState } from "./state.ts";
 import { selectedAgent } from "./state.ts";
-
-function label(entry: TranscriptEntry) {
-  if (entry.role === "tool") return `tool ${entry.name ?? ""}`;
-  if (entry.role === "toolResult") return `result ${entry.name ?? ""}`;
-  return entry.role;
-}
-
-function roleColor(entry: TranscriptEntry) {
-  if (entry.isError) return "error" as const;
-  if (entry.role === "thinking") return "dim" as const;
-  if (entry.role === "tool" || entry.role === "toolResult") return "warning" as const;
-  return entry.role === "user" ? ("accent" as const) : ("text" as const);
-}
 
 export function renderTranscript(state: DashboardState, width: number, height: number) {
   const agent = selectedAgent(state)!;
   const details = state.current!.details;
   const theme = state.theme;
-  const rows: string[] = [];
-  if (!agent.transcript.length) rows.push(theme.fg("muted", "Transcript unavailable."));
-  for (const entry of agent.transcript) {
-    const color = roleColor(entry);
-    const duration = entry.durationMs === undefined ? "" : ` · ${entry.durationMs}ms`;
-    rows.push(theme.fg(color, `${label(entry)}${duration}`));
-    const content = theme.fg(entry.role === "thinking" ? "dim" : "text", entry.text || "(empty)");
-    rows.push(...wrapTextWithAnsi(content, Math.max(1, width - 2)).map((line) => `  ${line}`));
-    rows.push("");
-  }
+  const rows = agent.transcript.length
+    ? transcriptRows(agent.transcript, width, theme)
+    : [theme.fg("muted", "Transcript unavailable.")];
   const bodyHeight = Math.max(1, height - 3);
   state.transcriptRows = rows.length;
   state.viewport = bodyHeight;
