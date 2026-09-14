@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/jalbarrang/pi-workflows/compare/v0.3.0...v0.4.0) (2026-09-14)
+
+
+### Features
+
+* make turns renderable ([9e97ace](https://github.com/jalbarrang/pi-workflows/commit/9e97ace83be3c5a764d13f74a875f82911f3bee0))
+
 ## [0.3.0](https://github.com/jalbarrang/pi-workflows/compare/v0.2.1...v0.3.0) (2026-08-05)
 
 
